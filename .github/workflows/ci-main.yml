@@ -141,11 +141,10 @@ jobs:
       minio:
         image: minio/minio
         env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin123
+          MINIO_ROOT_USER: ${{ secrets.MINIO_ROOT_USER }}
+          MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
         ports:
           - 9000:9000
-        options: --health-cmd "curl -f http://localhost:9000/minio/health/live" --health-interval=30s --health-timeout=20s --health-retries=3
 
     steps:
     - name: Checkout code
