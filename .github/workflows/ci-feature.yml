@@ -1,16 +1,10 @@
 name: CI - Feature Branch
 
 on:
-  push:
-    branches:
-      - 'feat/**'
-      - 'fix/**'
-      - 'feature/**'
-      - 'bugfix/**'
   pull_request:
     branches:
       - main
-      - develop
+
 
 jobs:
   lint-and-format:
@@ -49,12 +43,12 @@ jobs:
     - name: Python Code Formatting Check
       run: |
         echo "Checking Python code formatting with black..."
-        black --check --diff src/ tests/
+        black --check --diff src/ tests/ docker/
 
     - name: Python Linting and Auto-fixes
       run: |
         echo "Linting Python code with ruff..."
-        ruff check --fix src/ tests/
+        ruff check --fix src/ tests/ docker/
 
     - name: Terraform Formatting Check
       run: |
