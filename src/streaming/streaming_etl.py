@@ -1,31 +1,36 @@
 """
 Spark Structured Streaming ETL job for IoT events.
 """
-import logging
 import os
-
+import logging
 from dotenv import load_dotenv
-from pyspark.sql import DataFrame, SparkSession
+
+from pyspark.sql import SparkSession, DataFrame
 from pyspark.sql.functions import (
-    avg,
     col,
-    count,
-    current_timestamp,
-    dayofmonth,
     from_json,
-    hour,
+    to_timestamp,
+    window,
+    avg,
+    count,
+    max as spark_max,
+    min as spark_min,
+    stddev,
+    when,
     isnan,
+    current_timestamp,
+    year,
+    month,
+    dayofmonth,
+    hour,
 )
-from pyspark.sql.functions import max as spark_max
-from pyspark.sql.functions import min as spark_min
-from pyspark.sql.functions import month, stddev, to_timestamp, when, window, year
 from pyspark.sql.types import (
+    StructType,
+    StructField,
+    StringType,
     DoubleType,
     IntegerType,
     MapType,
-    StringType,
-    StructField,
-    StructType,
 )
 
 # Load environment variables

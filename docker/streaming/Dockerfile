@@ -30,12 +30,11 @@ RUN wget -O /opt/spark/jars/aws-java-sdk-bundle-1.12.367.jar \
 # Set working directory
 WORKDIR /app
 
-# Copy requirements and install Python dependencies
-COPY requirements.txt .
+COPY src/streaming/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy source code
-COPY . .
+COPY src/streaming /app/src/streaming
 
 # Set environment variables
 ENV PYTHONPATH=/app:/opt/spark/python:/opt/spark/python/lib/py4j-0.10.9.7-src.zip

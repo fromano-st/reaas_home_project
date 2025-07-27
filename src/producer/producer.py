@@ -3,18 +3,19 @@ Kafka producer for IoT event data simulation.
 """
 import json
 import logging
-import os
 import random
-import threading
 import time
 from datetime import datetime, timedelta, timezone
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from typing import Any, Dict, List
-
+from typing import List, Dict, Any
+import os
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from dotenv import load_dotenv
+
 from kafka import KafkaProducer
 
-from src.producer.schema import SCHEMA_DOCUMENTATION, DeviceType, IoTEvent
+from src.producer.schema import IoTEvent, DeviceType, SCHEMA_DOCUMENTATION
+
 
 # Load environment variables
 load_dotenv()
@@ -77,7 +78,7 @@ class HealthCheckServer:
 
     def start(self):
         """Start the health check server."""
-        handler = lambda *args, **kwargs: HealthCheckHandler(  # noqa: E731
+        handler = lambda *args, **kwargs: HealthCheckHandler(  # noqa:E731
             self.producer_instance, *args, **kwargs
         )
         self.server = HTTPServer(("0.0.0.0", self.port), handler)
