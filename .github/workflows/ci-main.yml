@@ -171,6 +171,11 @@ jobs:
         timeout 60 bash -c 'until nc -z localhost 9000; do sleep 1; done'
         sleep 10
 
+    - name: Print MinIO logs if connection failed
+      # This step will only run if the previous step failed (e.g., timed out)
+      if: failure()
+      run: docker logs minio || true
+
     - name: Create .env file for testing
       run: |
         cat > .env << EOF
