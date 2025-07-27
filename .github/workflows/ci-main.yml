@@ -145,7 +145,7 @@ jobs:
           MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
         ports:
           - 9000:9000
-        options: --health-cmd "curl --fail http://minio:9000/minio/health/live" --health-interval 10s --health-timeout 5s --health-retries 5
+        #options: --health-cmd "curl --fail http://minio:9000/minio/health/live" --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
     - name: Checkout code
