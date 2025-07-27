@@ -142,7 +142,7 @@ jobs:
   notify-status:
     name: Notify Status
     runs-on: ubuntu-latest
-    needs: [lint-and-format, security-scan, docker-build, code-quality, documentation-check]
+    needs: [lint-and-format, docker-build, documentation-check]
     if: always()
 
     steps:
@@ -150,9 +150,7 @@ jobs:
       run: |
         echo "CI Results Summary:"
         echo "Lint and Format: ${{ needs.lint-and-format.result }}"
-        echo "Security Scan: ${{ needs.security-scan.result }}"
         echo "Docker Build: ${{ needs.docker-build.result }}"
-        echo "Code Quality: ${{ needs.code-quality.result }}"
         echo "Documentation: ${{ needs.documentation-check.result }}"
 
         if [[ "${{ needs.lint-and-format.result }}" == "failure" ||
