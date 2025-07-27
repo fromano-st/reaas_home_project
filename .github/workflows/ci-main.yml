@@ -145,6 +145,7 @@ jobs:
           MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
         ports:
           - 9000:9000
+        options: --health-cmd "curl --fail http://minio:9000/minio/health/live" --health-interval 10s --health-timeout 5s --health-retries 5
 
     steps:
     - name: Checkout code
@@ -167,7 +168,7 @@ jobs:
         echo "Waiting for Kafka to be ready..."
         timeout 60 bash -c 'until nc -z localhost 9092; do sleep 1; done'
         echo "Waiting for MinIO to be ready..."
-        timeout 60 bash -c 'until nc -z localhost 9000; do sleep 1; done'
+        timeout 60 bash -c 'until nc -z minio 9000; do sleep 1; done'
         sleep 10
 
     - name: Create .env file for testing
