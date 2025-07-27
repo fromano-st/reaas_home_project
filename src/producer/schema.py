@@ -1,11 +1,10 @@
 """
 Data schema definitions for IoT events.
 """
+from pydantic import BaseModel, Field, ConfigDict, field_serializer
+from typing import Optional, Dict, Any
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, Optional
-
-from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 
 class DeviceType(str, Enum):

@@ -1,20 +1,19 @@
 """
 Historical data generator for populating MinIO with a week of IoT data.
 """
+import os
 import json
 import logging
-import os
-import sys
 from datetime import datetime, timedelta
-from typing import Any, Dict, List
-
+from typing import List, Dict, Any
 import boto3
 from dotenv import load_dotenv
+import sys
 
 sys.path.append("producer")
 
-from src.producer.producer import IoTDataGenerator
 from src.producer.schema import IoTEvent
+from src.producer.producer import IoTDataGenerator
 
 # Load environment variables
 load_dotenv()

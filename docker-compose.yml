@@ -77,7 +77,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
     volumes:
       - grafana-data:/var/lib/grafana
       - ./config/grafana/provisioning:/etc/grafana/provisioning
@@ -100,21 +100,45 @@ services:
     image: minio/minio
     command: server /var/lib/minio/data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     ports:
       - "9000:9000"  # S3 API
       - "9001:9001"  # Web UI
     volumes:
       - minio-data:/var/lib/minio/data
 
+  # IoT Event Producer
+  iot-producer:
+    build:
+      context: .
+      dockerfile: docker/producer/Dockerfile
+    container_name: iot-producer
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+    restart: unless-stopped
+
+  # Spark Streaming ETL
+  spark-streaming:
+    build:
+      context: .
+      dockerfile: docker/streaming/Dockerfile
+    container_name: spark-streaming
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+      - minio
+    volumes:
+      - ./tmp/spark-checkpoints:/tmp/spark-checkpoints
+    restart: unless-stopped
+
   s3-tester:
     build: ./tests/s3_tester
-    environment:
-      AWS_ENDPOINT: http://minio:9000
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin
-      AWS_S3_BUCKET: test-bucket
+    env_file:
+      - .env
     depends_on:
       minio:
         condition: service_started
