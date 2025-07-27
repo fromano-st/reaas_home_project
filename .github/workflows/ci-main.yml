@@ -213,7 +213,8 @@ jobs:
     - name: Build Producer image
       uses: docker/build-push-action@v5
       with:
-        context: ./src/producer
+        context: .
+        dockerfile: ./docker/producer/Dockerfile
         push: false
         tags: iot-producer:test
         cache-from: type=gha
@@ -222,7 +223,8 @@ jobs:
     - name: Build Streaming image
       uses: docker/build-push-action@v5
       with:
-        context: ./src/streaming
+        context: .
+        dockerfile: ./docker/streaming/Dockerfile
         push: false
         tags: spark-streaming:test
         cache-from: type=gha
