@@ -85,12 +85,12 @@ jobs:
     - name: Build Producer Image
       run: |
         echo "Building producer Docker image..."
-        docker build -t iot-producer:test ./src/producer
+        docker build -t iot-producer:test -f ./docker/producer/Dockerfile .
 
     - name: Build Streaming Image
       run: |
         echo "Building streaming Docker image..."
-        docker build -t spark-streaming:test ./src/streaming
+        docker build -t spark-streaming:test -f ./docker/streaming/Dockerfile .
 
     - name: Build S3 Tester Image
       run: |
