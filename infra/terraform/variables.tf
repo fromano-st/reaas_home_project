@@ -1,12 +1,15 @@
 variable "aws_region" {
   default = "eu-west-1"
+  type    = string
 }
 
 variable "landing_bucket" {
   default = "reaas-home-project-landing"
+  type    = string
 }
 variable "data_bucket" {
   default = "reaas-home-project-data"
+  type    = string
 }
 
 variable "minio_endpoint" {
@@ -18,16 +21,17 @@ variable "minio_endpoint" {
 variable "minio_access_key" {
   description = "MinIO access key"
   type        = string
-  default     = "minioadmin"
+  default     = ""
 }
 
 variable "minio_secret_key" {
   description = "MinIO secret key"
   type        = string
-  default     = "minioadmin"
+  default     = ""
+  sensitive   = true
 }
 
-variable "use_minio"{
+variable "use_minio" {
   default = true
   type    = bool
 }
