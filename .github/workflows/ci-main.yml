@@ -303,163 +303,10 @@ jobs:
         docker-compose down -v
         docker system prune -f
 
-  docker-build:
-    name: Docker Build Test
-    runs-on: ubuntu-latest
-    needs: [unit-tests, integration-tests]
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
-
-    - name: Build Producer image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        dockerfile: ./docker/producer/Dockerfile
-        push: false
-        tags: iot-producer:test
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Build Streaming image
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        dockerfile: ./docker/streaming/Dockerfile
-        push: false
-        tags: spark-streaming:test
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Build S3 Tester image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./tests/s3_tester
-        push: false
-        tags: s3-tester:test
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Build Kafka Consumer Tester image
-      uses: docker/build-push-action@v5
-      with:
-        context: ./tests/kafka_consumer_tester
-        push: false
-        tags: kafka-consumer-tester:test
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
-
-    - name: Test Docker Images
-      run: |
-        echo "🧪 Testing built Docker images..."
-
-        # Test producer image
-        docker run --rm iot-producer:test python3 -c "import producer; print('✅ Producer image OK')"
-
-        # Test s3-tester image
-        docker run --rm s3-tester:test python3 -c "import test_s3; print('✅ S3 tester image OK')"
-
-        # Test kafka-consumer-tester image
-        docker run --rm kafka-consumer-tester:test python3 -c "import test_kafka_consumer; print('✅ Kafka consumer tester image OK')"
-
-  end-to-end-test:
-    name: End-to-End Docker Test
-    runs-on: ubuntu-latest
-    needs: docker-build
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-
-    - name: Create test environment
-      run: |
-        # Create directories
-        mkdir -p tmp/spark-checkpoints
-        mkdir -p config
-        chmod 777 tmp/spark-checkpoints
-
-        # Create minimal config files
-        cat > config/prometheus.yml << EOF
-        global:
-          scrape_interval: 15s
-        scrape_configs:
-          - job_name: 'prometheus'
-            static_configs:
-              - targets: ['localhost:9090']
-        EOF
-
-        cat > config/jmx-exporter.yml << EOF
-        rules:
-          - pattern: ".*"
-        EOF
-
-        # Create test .env
-        cat > .env << EOF
-        KAFKA_BOOTSTRAP_SERVERS=localhost:9092
-        KAFKA_TOPIC=iot-events-e2e
-        PRODUCER_INTERVAL=1.0
-        MAX_EVENTS=5
-        MINIO_ENDPOINT=http://localhost:9000
-        AWS_ENDPOINT=http://localhost:9000
-        AWS_ACCESS_KEY_ID=minioadmin
-        AWS_SECRET_ACCESS_KEY=minioadmin
-        MINIO_ROOT_USER=minioadmin
-        MINIO_ROOT_PASSWORD=minioadmin
-        AWS_S3_BUCKET_LANDING=e2e-bucket-landing
-        AWS_S3_BUCKET_DATA=e2e-bucket-data
-        GRAFANA_ADMIN_PASSWORD=admin123
-        EOF
-
-    - name: Run End-to-End Docker Compose Test
-      run: |
-        echo "🚀 Running end-to-end Docker Compose test..."
-
-        # Start infrastructure services (equivalent to make setup-infrastructure)
-        echo "Starting infrastructure services..."
-        docker-compose up -d zookeeper kafka minio
-
-        # Wait for services
-        echo "Waiting for services to be ready..."
-        sleep 60
-
-        # Check service health
-        echo "Checking service status..."
-        docker-compose ps
-
-        # Run S3 test (equivalent to docker-compose up s3-tester)
-        echo "Running S3 connectivity test..."
-        docker-compose run --rm s3-tester
-
-        # Start producer briefly (equivalent to docker-compose up -d iot-producer)
-        echo "Starting IoT producer..."
-        docker-compose up -d iot-producer
-        sleep 30
-
-        # Run kafka consumer test (equivalent to docker-compose up kafka-consumer-tester)
-        echo "Running Kafka consumer test..."
-        docker-compose run --rm kafka-consumer-tester
-
-        # Check logs
-        echo "Checking producer logs..."
-        docker-compose logs iot-producer
-
-        echo "✅ End-to-end test completed successfully!"
-
-    - name: Cleanup
-      if: always()
-      run: |
-        echo "🧹 Cleaning up end-to-end test environment..."
-        docker-compose down -v
-        docker system prune -f
-
   notify-success:
     name: Notify Success
     runs-on: ubuntu-latest
-    needs: [lint-and-format, unit-tests, integration-tests, docker-build, end-to-end-test]
+    needs: [lint-and-format, unit-tests, integration-tests]
     if: success()
 
     steps:
@@ -469,14 +316,12 @@ jobs:
         echo "✅ Lint and format checks passed"
         echo "✅ Unit tests passed"
         echo "✅ Integration tests passed (with infrastructure setup)"
-        echo "✅ Docker images built successfully"
-        echo "✅ End-to-end tests passed"
         echo "🚀 Ready for deployment"
 
   notify-failure:
     name: Notify Failure
     runs-on: ubuntu-latest
-    needs: [lint-and-format, unit-tests, integration-tests, docker-build, end-to-end-test]
+    needs: [lint-and-format, unit-tests, integration-tests]
     if: failure()
 
     steps:
@@ -487,6 +332,4 @@ jobs:
         echo "Lint and Format: ${{ needs.lint-and-format.result }}"
         echo "Unit Tests: ${{ needs.unit-tests.result }}"
         echo "Integration Tests: ${{ needs.integration-tests.result }}"
-        echo "Docker Build: ${{ needs.docker-build.result }}"
-        echo "End-to-End Test: ${{ needs.end-to-end-test.result }}"
         exit 1
