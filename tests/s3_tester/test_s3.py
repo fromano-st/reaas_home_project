@@ -1,14 +1,13 @@
 """
 S3/MinIO connectivity and bucket testing script.
 """
+import os
 import json
 import logging
-import os
 from datetime import datetime
-
+from dotenv import load_dotenv
 import boto3
 from botocore.exceptions import ClientError
-from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()

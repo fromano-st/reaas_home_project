@@ -33,9 +33,9 @@ class HistoricalDataGenerator:
         self.data_generator = IoTDataGenerator()
 
         # S3/MinIO configuration - no defaults, raise errors if missing
-        self.endpoint_url = os.getenv("MINIO_ENDPOINT")
+        self.endpoint_url = os.getenv("AWS_ENDPOINT")
         if not self.endpoint_url:
-            raise ValueError("MINIO_ENDPOINT environment variable is required")
+            raise ValueError("AWS_ENDPOINT environment variable is required")
 
         self.access_key = os.getenv("AWS_ACCESS_KEY_ID")
         if not self.access_key:

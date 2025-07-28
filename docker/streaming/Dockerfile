@@ -48,4 +48,4 @@ RUN mkdir -p /tmp/spark-checkpoints && chmod 777 /tmp/spark-checkpoints
 USER spark
 
 # Default command
-CMD ["python", "streaming_etl.py"]
+CMD ["python3", "src/streaming/streaming_etl.py"]

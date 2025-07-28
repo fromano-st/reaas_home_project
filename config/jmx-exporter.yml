@@ -1,50 +1,109 @@
 hostPort: kafka:9101
 lowercaseOutputName: true
 lowercaseOutputLabelNames: true
+ssl: false
+username: 
+password: 
 
 rules:
-  # Kafka Broker metrics
-  - pattern: kafka.server<type=(.+), name=(.+)><>Value
-    name: kafka_server_$1_$2
-    type: GAUGE
-
-  # Kafka Producer metrics
-  - pattern: kafka.producer<type=(.+), client-id=(.+)><>(.+)
-    name: kafka_producer_$1_$3
-    labels:
-      client_id: $2
-    type: GAUGE
-
-  # Kafka Consumer metrics
-  - pattern: kafka.consumer<type=(.+), client-id=(.+)><>(.+)
-    name: kafka_consumer_$1_$3
-    labels:
-      client_id: $2
-    type: GAUGE
-
-  # Topic metrics
-  - pattern: kafka.server<type=BrokerTopicMetrics, name=(.+), topic=(.+)><>Count
-    name: kafka_server_brokertopicmetrics_$1_total
-    labels:
-      topic: $2
-    type: COUNTER
-
-  # Partition metrics
-  - pattern: kafka.server<type=BrokerTopicMetrics, name=(.+)><>Count
-    name: kafka_server_brokertopicmetrics_$1_total
-    type: COUNTER
-
-  # Log size metrics
-  - pattern: kafka.log<type=Log, name=Size, topic=(.+), partition=(.+)><>Value
-    name: kafka_log_size_bytes
+  # Kafka Broker Topic Metrics - Messages In
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=MessagesInPerSec, topic=(.+)><>Count
+    name: kafka_server_brokertopicmetrics_messagesin_total
     labels:
       topic: $1
-      partition: $2
+    type: COUNTER
+
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=MessagesInPerSec><>Count
+    name: kafka_server_brokertopicmetrics_messagesin_total
+    type: COUNTER
+
+  # Kafka Broker Topic Metrics - Bytes In
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=BytesInPerSec, topic=(.+)><>Count
+    name: kafka_server_brokertopicmetrics_bytesin_total
+    labels:
+      topic: $1
+    type: COUNTER
+
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=BytesInPerSec><>Count
+    name: kafka_server_brokertopicmetrics_bytesin_total
+    type: COUNTER
+
+  # Kafka Broker Topic Metrics - Bytes Out
+  - pattern: kafka.server<type=BrokerTopicMetrics, name=BytesOutPerSec, topic=(.+)><>Count
+    name: kafka_server_brokertopicmetrics_bytesout_total
+    labels:
+      topic: $1
+    type: COUNTER
+
+  # Kafka Consumer Lag
+  - pattern: kafka.consumer<type=consumer-fetch-manager-metrics, client-id=(.+), topic=(.+), partition=(.+)><>records-lag
+    name: kafka_consumer_lag_sum
+    labels:
+      client_id: $1
+      topic: $2
+      partition: $3
     type: GAUGE
 
-  # Request metrics
-  - pattern: kafka.network<type=RequestMetrics, name=(.+), request=(.+)><>(.+)
-    name: kafka_network_requestmetrics_$1_$3
+  # Kafka Producer Metrics - Record Send Rate
+  - pattern: kafka.producer<type=producer-metrics, client-id=(.+)><>record-send-rate
+    name: kafka_producer_record_send_rate
+    labels:
+      client_id: $1
+    type: GAUGE
+
+  # Kafka Producer Metrics - Request Latency
+  - pattern: kafka.producer<type=producer-node-metrics, client-id=(.+), node-id=(.+)><>request-latency-avg
+    name: kafka_producer_request_latency_avg
+    labels:
+      client_id: $1
+      node_id: $2
+    type: GAUGE
+
+  # Processing Success/Failure Metrics (Custom Application Metrics)
+  - pattern: processing<type=(.+)><>(.+)
+    name: processing_$2_total
+    labels:
+      type: $1
+    type: COUNTER
+
+  # Kafka Server Request Metrics
+  - pattern: kafka.network<type=RequestMetrics, name=(.+), request=(.+)><>Count
+    name: kafka_network_requestmetrics_$1_total
     labels:
       request: $2
+    type: COUNTER
+
+  # Kafka Network Request Metrics - Latency
+  - pattern: kafka.network<type=RequestMetrics, name=RequestsPerSec, request=(.+)><>Count
+    name: kafka_network_requests_total
+    labels:
+      request: $1
+    type: COUNTER
+
+  # Kafka Controller metrics
+  - pattern: kafka.controller<type=(.+), name=(.+)><>Value
+    name: kafka_controller_$1_$2
+    type: GAUGE
+
+  # Kafka Log Size metrics
+  - pattern: kafka.log<type=Size, name=(.+), topic=(.+), partition=(.+)><>Value
+    name: kafka_log_size_$1
+    labels:
+      topic: $2
+      partition: $3
+    type: GAUGE
+
+  # JVM metrics
+  - pattern: java.lang<type=(.+), name=(.+)><>(.+)
+    name: jvm_$1_$2_$3
+    type: GAUGE
+
+  # Generic Kafka metrics
+  - pattern: kafka.(.+)<type=(.+), name=(.+)><>(.+)
+    name: kafka_$1_$2_$3_$4
+    type: GAUGE
+
+  # Generic pattern for other metrics
+  - pattern: (.+)
+    name: kafka_generic_$1
     type: GAUGE

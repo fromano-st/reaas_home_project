@@ -235,6 +235,7 @@ The project includes GitHub Actions workflows:
 ├── src/                       # Source code
 │   ├── producer/              # Kafka producer
 │   ├── streaming/             # Spark streaming job
+│   ├── data_validator.py      # Data validation utilities
 │   └── historical_data_generator.py
 ├── tests/                     # Test suite
 ├── docker-compose.yml         # Local development environment
@@ -287,5 +288,33 @@ The project includes GitHub Actions workflows:
 - **Spark**: Tune `spark.sql.streaming.checkpointLocation` and batch intervals
 - **MinIO**: Configure appropriate storage classes and lifecycle policies
 
+## 📚 Additional Resources
+
+- [Apache Kafka Documentation](https://kafka.apache.org/documentation/)
+- [Spark Structured Streaming Guide](https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html)
+- [MinIO Documentation](https://docs.min.io/)
+- [Grafana Dashboard Creation](https://grafana.com/docs/grafana/latest/dashboards/)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feat/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feat/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🆘 Support
+
+For support and questions:
+
+- Create an issue in the GitHub repository
+- Check the troubleshooting section above
+- Review the monitoring dashboards for system health
+
 ---
 
+**Built with ❤️ for real-time data processing**

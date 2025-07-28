@@ -2,32 +2,34 @@ global:
   scrape_interval: 15s
   evaluation_interval: 15s
 
-rule_files:
-  # - "first_rules.yml"
-  # - "second_rules.yml"
-
 scrape_configs:
-  # Prometheus itself
+  # Prometheus itself (unchanged)
   - job_name: 'prometheus'
     static_configs:
       - targets: ['localhost:9090']
 
-  # JMX Exporter for Kafka metrics
+  # JMX Exporter for Kafka (unchanged) - uses port 5556
   - job_name: 'kafka-jmx'
     static_configs:
       - targets: ['jmx-exporter:5556']
     scrape_interval: 10s
     metrics_path: /metrics
 
-  # Custom application metrics
-  - job_name: 'streaming-app'
+  # Kafka UI - update port to match Docker Compose (8080)
+  - job_name: 'kafka-ui'
     static_configs:
-      - targets: ['host.docker.internal:8000']
-    scrape_interval: 10s
+      - targets: ['kafka-ui:8080']
+    metrics_path: /actuator/prometheus
+
+  # Producer metrics - use correct service name and port (8080)
+  - job_name: 'producer-app'
+    static_configs:
+      - targets: ['iot-producer:8080']
+    scrape_interval: 15s
     metrics_path: /metrics
 
-  # Node exporter (if needed for system metrics)
-  - job_name: 'node-exporter'
+  - job_name: 'docker-containers'
     static_configs:
-      - targets: ['host.docker.internal:9100']
+      - targets: ['kafka:9101']
     scrape_interval: 30s
+    metrics_path: /metrics  # Path for JMX exporter

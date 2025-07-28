@@ -1,11 +1,10 @@
 """
 Unit tests for Spark streaming ETL.
 """
-import os
-import sys
-from unittest.mock import Mock, patch
-
 import pytest
+import os
+from unittest.mock import Mock, patch
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -72,7 +71,7 @@ class TestIoTStreamingETL:
                 ):
                     IoTStreamingETL()
 
-            # Test missing MINIO_ENDPOINT
+            # Test missing AWS_ENDPOINT
             with patch.dict(
                 os.environ,
                 {
@@ -84,7 +83,7 @@ class TestIoTStreamingETL:
                 clear=True,
             ):
                 with pytest.raises(
-                    ValueError, match="MINIO_ENDPOINT environment variable is required"
+                    ValueError, match="AWS_ENDPOINT environment variable is required"
                 ):
                     IoTStreamingETL()
 
@@ -96,7 +95,7 @@ class TestIoTStreamingETL:
                     "KAFKA_TOPIC": "iot-events",
                     "CHECKPOINT_LOCATION": "/tmp/checkpoints",
                     "OUTPUT_PATH": "s3a://bucket/path",
-                    "MINIO_ENDPOINT": "http://localhost:9000",
+                    "AWS_ENDPOINT": "http://localhost:9000",
                 },
                 clear=True,
             ):
@@ -114,7 +113,7 @@ class TestIoTStreamingETL:
                     "KAFKA_TOPIC": "iot-events",
                     "CHECKPOINT_LOCATION": "/tmp/checkpoints",
                     "OUTPUT_PATH": "s3a://bucket/path",
-                    "MINIO_ENDPOINT": "http://localhost:9000",
+                    "AWS_ENDPOINT": "http://localhost:9000",
                     "AWS_ACCESS_KEY_ID": "minioadmin",
                 },
                 clear=True,
@@ -163,7 +162,7 @@ class TestIoTStreamingETL:
                         "KAFKA_TOPIC": "iot-events",
                         "CHECKPOINT_LOCATION": "/tmp/checkpoints",
                         "OUTPUT_PATH": "s3a://bucket/path",
-                        "MINIO_ENDPOINT": "http://localhost:9000",
+                        "AWS_ENDPOINT": "http://localhost:9000",
                         "AWS_ACCESS_KEY_ID": "minioadmin",
                         "AWS_SECRET_ACCESS_KEY": "minioadmin",
                     },
@@ -174,7 +173,7 @@ class TestIoTStreamingETL:
                     assert etl.kafka_topic == "iot-events"
                     assert etl.checkpoint_location == "/tmp/checkpoints"
                     assert etl.output_path == "s3a://bucket/path"
-                    assert etl.minio_endpoint == "http://localhost:9000"
+                    assert etl.aws_endpoint == "http://localhost:9000"
                     assert etl.aws_access_key == "minioadmin"
                     assert etl.aws_secret_key == "minioadmin"
 
@@ -216,7 +215,7 @@ class TestIoTStreamingETL:
                         "KAFKA_TOPIC": "iot-events",
                         "CHECKPOINT_LOCATION": "/tmp/checkpoints",
                         "OUTPUT_PATH": "s3a://bucket/path",
-                        "MINIO_ENDPOINT": "http://localhost:9000",
+                        "AWS_ENDPOINT": "http://localhost:9000",
                         "AWS_ACCESS_KEY_ID": "minioadmin",
                         "AWS_SECRET_ACCESS_KEY": "minioadmin",
                     },
@@ -279,7 +278,7 @@ class TestIoTStreamingETL:
                         "KAFKA_TOPIC": "iot-events",
                         "CHECKPOINT_LOCATION": "/tmp/checkpoints",
                         "OUTPUT_PATH": "s3a://bucket/path",
-                        "MINIO_ENDPOINT": "http://localhost:9000",
+                        "AWS_ENDPOINT": "http://localhost:9000",
                         "AWS_ACCESS_KEY_ID": "minioadmin",
                         "AWS_SECRET_ACCESS_KEY": "minioadmin",
                     },
@@ -332,7 +331,7 @@ class TestIoTStreamingETL:
                         "KAFKA_TOPIC": "iot-events",
                         "CHECKPOINT_LOCATION": "/tmp/checkpoints",
                         "OUTPUT_PATH": "s3a://bucket/path",
-                        "MINIO_ENDPOINT": "http://localhost:9000",
+                        "AWS_ENDPOINT": "http://localhost:9000",
                         "AWS_ACCESS_KEY_ID": "minioadmin",
                         "AWS_SECRET_ACCESS_KEY": "minioadmin",
                     },
@@ -386,7 +385,7 @@ class TestDataQualityChecks:
                         "KAFKA_TOPIC": "iot-events",
                         "CHECKPOINT_LOCATION": "/tmp/checkpoints",
                         "OUTPUT_PATH": "s3a://bucket/path",
-                        "MINIO_ENDPOINT": "http://localhost:9000",
+                        "AWS_ENDPOINT": "http://localhost:9000",
                         "AWS_ACCESS_KEY_ID": "minioadmin",
                         "AWS_SECRET_ACCESS_KEY": "minioadmin",
                     },
@@ -437,7 +436,7 @@ class TestWindowedAggregations:
                         "KAFKA_TOPIC": "iot-events",
                         "CHECKPOINT_LOCATION": "/tmp/checkpoints",
                         "OUTPUT_PATH": "s3a://bucket/path",
-                        "MINIO_ENDPOINT": "http://localhost:9000",
+                        "AWS_ENDPOINT": "http://localhost:9000",
                         "AWS_ACCESS_KEY_ID": "minioadmin",
                         "AWS_SECRET_ACCESS_KEY": "minioadmin",
                     },
@@ -488,7 +487,7 @@ class TestStreamWriting:
                         "KAFKA_TOPIC": "iot-events",
                         "CHECKPOINT_LOCATION": "/tmp/checkpoints",
                         "OUTPUT_PATH": "s3a://bucket/path",
-                        "MINIO_ENDPOINT": "http://localhost:9000",
+                        "AWS_ENDPOINT": "http://localhost:9000",
                         "AWS_ACCESS_KEY_ID": "minioadmin",
                         "AWS_SECRET_ACCESS_KEY": "minioadmin",
                     },
