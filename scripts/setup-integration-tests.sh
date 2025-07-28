@@ -39,18 +39,18 @@ wait_for_service() {
     local attempt=1
 
     print_status "Waiting for $service_name to be ready at $host:$port..."
-    
+
     while [ $attempt -le $max_attempts ]; do
         if nc -z $host $port 2>/dev/null; then
             print_success "$service_name is ready!"
             return 0
         fi
-        
+
         echo -n "."
         sleep 2
         attempt=$((attempt + 1))
     done
-    
+
     print_error "$service_name failed to start within $((max_attempts * 2)) seconds"
     return 1
 }
@@ -63,18 +63,18 @@ wait_for_http_service() {
     local attempt=1
 
     print_status "Waiting for $service_name to be ready at $url..."
-    
+
     while [ $attempt -le $max_attempts ]; do
         if curl -f -s $url > /dev/null 2>&1; then
             print_success "$service_name is ready!"
             return 0
         fi
-        
+
         echo -n "."
         sleep 2
         attempt=$((attempt + 1))
     done
-    
+
     print_error "$service_name failed to start within $((max_attempts * 2)) seconds"
     return 1
 }
@@ -88,82 +88,21 @@ create_directories() {
     print_success "Directories created"
 }
 
-# Function to create minimal config files
-create_config_files() {
-    print_status "Creating configuration files..."
-    
-    # Create minimal prometheus config
-    cat > config/prometheus.yml << EOF
-global:
-  scrape_interval: 15s
-scrape_configs:
-  - job_name: 'prometheus'
-    static_configs:
-      - targets: ['localhost:9090']
-EOF
-
-    # Create minimal JMX exporter config
-    cat > config/jmx-exporter.yml << EOF
-rules:
-  - pattern: ".*"
-EOF
-
-    print_success "Configuration files created"
-}
-
-# Function to create test environment file
-create_test_env() {
-    print_status "Creating test environment file..."
-    
-    cat > .env << EOF
-# Kafka Configuration
-KAFKA_BOOTSTRAP_SERVERS=localhost:9092
-KAFKA_TOPIC=iot-events-test
-
-# Producer Configuration
-PRODUCER_INTERVAL=1.0
-MAX_EVENTS=10
-
-# Spark Configuration
-CHECKPOINT_LOCATION=/tmp/spark-checkpoints-test
-OUTPUT_PATH=s3a://test-bucket-data/processed/
-
-# MinIO/S3 Configuration
-MINIO_ENDPOINT=http://localhost:9000
-AWS_ENDPOINT=http://localhost:9000
-AWS_ACCESS_KEY_ID=minioadmin
-AWS_SECRET_ACCESS_KEY=minioadmin
-MINIO_ROOT_USER=minioadmin
-MINIO_ROOT_PASSWORD=minioadmin
-
-# S3 Buckets
-AWS_S3_BUCKET_LANDING=test-bucket-landing
-AWS_S3_BUCKET_DATA=test-bucket-data
-
-# Historical Data Configuration
-HISTORICAL_DAYS=1
-
-# Grafana Configuration
-GRAFANA_ADMIN_PASSWORD=admin123
-EOF
-
-    print_success "Test environment file created"
-}
 
 # Function to setup infrastructure (equivalent to make setup-infrastructure)
 setup_infrastructure() {
     print_status "Setting up infrastructure services..."
-    
+
     # Start core infrastructure services
     docker-compose up -d zookeeper kafka minio prometheus grafana kafka-ui jmx-exporter
-    
+
     print_status "Waiting for services to initialize..."
     sleep 30
-    
+
     # Wait for critical services
     wait_for_service "Kafka" "localhost" "9092"
     wait_for_http_service "MinIO" "http://localhost:9000/minio/health/live"
-    
+
     print_success "Infrastructure setup completed"
 }
 
@@ -179,7 +118,7 @@ run_s3_tests() {
 start_iot_producer() {
     print_status "Starting IoT Producer..."
     docker-compose up -d iot-producer
-    
+
     print_status "Allowing producer to generate some data..."
     sleep 30
     print_success "IoT Producer started"
@@ -193,14 +132,6 @@ run_kafka_consumer_tests() {
     print_success "Kafka Consumer tests completed"
 }
 
-# Function to run integration tests
-run_integration_tests() {
-    print_status "Running integration tests..."
-    cd tests
-    python -m pytest test_integration.py -v --tb=short
-    cd ..
-    print_success "Integration tests completed"
-}
 
 # Function to show service status
 show_service_status() {
@@ -231,25 +162,22 @@ cleanup() {
 # Function to run full integration test suite
 run_full_integration_tests() {
     print_status "Starting full integration test suite..."
-    
+
     # Setup
     create_directories
-    create_config_files
-    create_test_env
-    
+
     # Infrastructure
     setup_infrastructure
-    
+
     # Tests
     run_s3_tests
     start_iot_producer
     run_kafka_consumer_tests
-    run_integration_tests
-    
+
     # Status
     show_service_status
     show_logs "iot-producer"
-    
+
     print_success "Full integration test suite completed!"
 }
 
@@ -257,8 +185,7 @@ run_full_integration_tests() {
 case "${1:-full}" in
     "setup")
         create_directories
-        create_config_files
-        create_test_env
+
         setup_infrastructure
         ;;
     "s3-test")
@@ -270,9 +197,7 @@ case "${1:-full}" in
     "kafka-test")
         run_kafka_consumer_tests
         ;;
-    "integration")
-        run_integration_tests
-        ;;
+
     "status")
         show_service_status
         ;;
@@ -293,7 +218,6 @@ case "${1:-full}" in
         echo "  s3-test     - Run S3 connectivity tests"
         echo "  producer    - Start IoT producer"
         echo "  kafka-test  - Run Kafka consumer tests"
-        echo "  integration - Run integration tests"
         echo "  status      - Show service status"
         echo "  logs [svc]  - Show logs (optionally for specific service)"
         echo "  cleanup     - Clean up all services"

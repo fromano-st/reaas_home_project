@@ -1,82 +1,78 @@
-# Real-Time Streaming ETL Pipeline
+Real-Time Streaming ETL Pipeline
+A production-grade streaming data pipeline using Apache Kafka, a Python Kafka Consumer, and MinIO for real-time IoT data processing and analytics.
 
-A production-grade streaming data pipeline using Apache Kafka, Spark Structured Streaming, and MinIO for real-time IoT data processing and analytics.
-
-## 🏗️ Architecture Overview
-
+🏗️ Architecture Overview
 This project implements a complete streaming ETL pipeline with the following components:
 
-- **Data Ingestion**: Apache Kafka with custom IoT event producer
-- **Stream Processing**: Spark Structured Streaming for real-time ETL
-- **Storage**: MinIO (S3-compatible) for processed data in Parquet format
-- **Monitoring**: Prometheus + Grafana for observability
-- **Infrastructure**: Terraform for infrastructure as code
-- **CI/CD**: GitHub Actions for automated testing and deployment
+Data Ingestion: Apache Kafka with custom IoT event producer
 
-## 📋 Prerequisites
+Stream Processing: Python Kafka Consumer for real-time ETL
 
-- Docker and Docker Compose
-- Python 3.11+
-- Terraform 1.6+
-- Make (for automation scripts)
-- Git
+Storage: MinIO (S3-compatible) for processed data in Parquet format
 
-## 🚀 Quick Start
+Monitoring: Prometheus + Grafana for observability
 
-### 1. Clone and Setup
+Infrastructure: Terraform for infrastructure as code
 
-```bash
+CI/CD: GitHub Actions for automated testing and deployment
+
+📋 Prerequisites
+To execute this pipeline locally, you will need the following:
+
+Docker and Docker Compose: For containerizing and orchestrating services.
+
+Python 3.11+: For running the IoT event producer and the Python Kafka consumer.
+
+Terraform 1.6+: (Optional) For provisioning infrastructure as code.
+
+Make: For automation scripts and simplified command execution.
+
+Git: For cloning the repository.
+
+🚀 Quick Start
+1. Clone and Setup
 git clone <repository-url>
 cd streaming-etl-pipeline
-cp .env.example .env  # Edit with your configuration
-```
+cp _env_sample.txt .env  # Edit with your configuration
 
-### 2. Start the Infrastructure
-
-```bash
+2. Start the Infrastructure
 # Start all services
-make up
+make start-all
 
 # Or start individual components
-make kafka-up      # Start Kafka cluster
-make minio-up      # Start MinIO storage
-make monitoring-up # Start Prometheus + Grafana
-```
+make
+start-infrastructure
+start-producer
+start-streaming
+start-python-kafka
 
-### 3. Deploy Infrastructure (Optional)
-
-```bash
+3. Deploy Infrastructure (Optional)
 # Initialize and apply Terraform
 make terraform-init
 make terraform-plan
 make terraform-apply
-```
 
-### 4. Start Data Pipeline
-
-```bash
+4. Start Data Pipeline
 # Start the producer
 make producer-start
 
-# Start the streaming job
-make streaming-start
+# Start the Python consumer job
+make consumer-start
 
 # Generate historical data
 make historical-data
-```
 
-### 5. Access Monitoring
+5. Access Monitoring
+Grafana Dashboard: http://localhost:3000 (admin/admin123)
 
-- **Grafana Dashboard**: http://localhost:3000 (admin/admin123)
-- **Kafka UI**: http://localhost:8080
-- **MinIO Console**: http://localhost:9001 (minioadmin/minioadmin123)
-- **Prometheus**: http://localhost:9090
+Kafka UI: http://localhost:8080
 
-## 📊 Data Schema
+MinIO Console: http://localhost:9001 (minioadmin/minioadmin123)
 
-### IoT Event Schema
+Prometheus: http://localhost:9090
 
-```json
+📊 Data Schema
+IoT Event Schema
 {
   "event_duration": 1.5,
   "device_type": "TEMPERATURE_SENSOR",
@@ -92,28 +88,32 @@ make historical-data
     "calibration_date": "2024-12-01"
   }
 }
-```
 
-### Supported Device Types
+Supported Device Types
+TEMPERATURE_SENSOR: Temperature readings (°C)
 
-- **TEMPERATURE_SENSOR**: Temperature readings (°C)
-- **HUMIDITY_SENSOR**: Humidity levels (%)
-- **PRESSURE_SENSOR**: Atmospheric pressure (hPa)
-- **LIGHT_SENSOR**: Light intensity (lux)
-- **MOTION_DETECTOR**: Motion detection (boolean)
-- **DOOR_SENSOR**: Door state (boolean)
-- **WINDOW_SENSOR**: Window state (boolean)
-- **SMOKE_DETECTOR**: Smoke detection (boolean)
-- **CO2_SENSOR**: CO2 concentration (ppm)
-- **AIR_QUALITY_SENSOR**: Air quality index (0-500)
+HUMIDITY_SENSOR: Humidity levels (%)
 
-## 🔧 Configuration
+PRESSURE_SENSOR: Atmospheric pressure (hPa)
 
-### Environment Variables
+LIGHT_SENSOR: Light intensity (lux)
 
-Key configuration options in `.env`:
+MOTION_DETECTOR: Motion detection (boolean)
 
-```bash
+DOOR_SENSOR: Door state (boolean)
+
+WINDOW_SENSOR: Window state (boolean)
+
+SMOKE_DETECTOR: Smoke detection (boolean)
+
+CO2_SENSOR: CO2 concentration (ppm)
+
+AIR_QUALITY_SENSOR: Air quality index (0-500)
+
+🔧 Configuration
+Environment Variables
+Key configuration options in .env:
+
 # Kafka Configuration
 KAFKA_BOOTSTRAP_SERVERS=kafka:29092
 KAFKA_TOPIC=iot-events
@@ -121,8 +121,9 @@ KAFKA_TOPIC=iot-events
 # Producer Configuration
 PRODUCER_INTERVAL=2.0
 
-# Spark Configuration
-CHECKPOINT_LOCATION=/tmp/spark-checkpoints
+# Python Consumer Configuration
+AGGREGATOR_BATCH_SIZE=100
+AGGREGATOR_FLUSH_INTERVAL=30
 OUTPUT_PATH=s3a://reaas-home-project-data/processed/
 
 # MinIO/S3 Configuration
@@ -135,68 +136,60 @@ GRAFANA_ADMIN_PASSWORD=admin123
 
 # Historical Data
 HISTORICAL_DAYS=7
-```
 
-## 📈 Monitoring and Observability
-
-### Grafana Dashboards
-
+📈 Monitoring and Observability
+Grafana Dashboards
 The system includes pre-configured Grafana dashboards showing:
 
-- **Message Volume**: Real-time message throughput
-- **Processing Latency**: End-to-end processing delays
-- **Error Rates**: Failed message processing
-- **Resource Utilization**: CPU, memory, and disk usage
-- **Kafka Metrics**: Topic lag, partition distribution
-- **Storage Metrics**: MinIO bucket usage and performance
+Message Volume: Real-time message throughput
 
-### Key Metrics
+Processing Latency: End-to-end processing delays
 
-- `kafka_server_brokertopicmetrics_messagesinpersec`: Messages per second
-- `kafka_server_brokertopicmetrics_bytesinpersec`: Bytes per second
-- `kafka_consumer_lag_sum`: Consumer lag
-- `spark_streaming_batch_processing_time`: Batch processing time
-- `minio_bucket_usage_total_bytes`: Storage usage
+Error Rates: Failed message processing
 
-## 🧪 Testing
+Resource Utilization: CPU, memory, and disk usage
 
-### Unit Tests
+Kafka Metrics: Topic lag, partition distribution
 
-```bash
+Storage Metrics: MinIO bucket usage and performance
+
+Key Metrics
+kafka_server_brokertopicmetrics_messagesinpersec: Messages per second
+
+kafka_server_brokertopicmetrics_bytesinpersec: Bytes per second
+
+kafka_consumer_lag_sum: Consumer lag
+
+python_consumer_batch_processing_time: Batch processing time (if exposed by consumer)
+
+minio_bucket_usage_total_bytes: Storage usage
+
+🧪 Testing
+Unit Tests
 # Run all unit tests
 make test
 
 # Run specific test files
 make test-producer
-make test-streaming
+make test-consumer # Assuming tests for the Python consumer
 make test-validator
-```
 
-### Integration Tests
-
-```bash
+Integration Tests
 # Run integration tests
 make test-integration
 
 # Test S3 connectivity
 make test-s3
-```
 
-### Load Testing
-
-```bash
+Load Testing
 # Generate high-volume test data
 make load-test
 
 # Monitor performance during load test
 make monitor-load
-```
 
-## 🏭 Production Deployment
-
-### Infrastructure Provisioning
-
-```bash
+🏭 Production Deployment
+Infrastructure Provisioning
 # Plan infrastructure changes
 make terraform-plan
 
@@ -205,26 +198,26 @@ make terraform-apply
 
 # Destroy infrastructure (careful!)
 make terraform-destroy
-```
 
-### CI/CD Pipeline
-
+CI/CD Pipeline
 The project includes GitHub Actions workflows:
 
-- **Feature Branch CI**: Linting, formatting, security scans
-- **Main Branch CI**: Full testing, integration tests, Docker builds
-- **CD Pipeline**: Automated Terraform deployment
+Feature Branch CI: Linting, formatting, security scans
 
-### Security Considerations
+Main Branch CI: Full testing, integration tests, Docker builds
 
-- All secrets managed via environment variables
-- Network security groups restrict access
-- Data encryption in transit and at rest
-- Regular security scanning with Bandit and Safety
+CD Pipeline: Automated Terraform deployment
 
-## 📁 Project Structure
+Security Considerations
+All secrets managed via environment variables
 
-```
+Network security groups restrict access
+
+Data encryption in transit and at rest
+
+Regular security scanning with Bandit and Safety
+
+📁 Project Structure
 .
 ├── .github/workflows/          # GitHub Actions CI/CD
 ├── config/                     # Configuration files
@@ -234,87 +227,60 @@ The project includes GitHub Actions workflows:
 ├── infra/terraform/           # Infrastructure as Code
 ├── src/                       # Source code
 │   ├── producer/              # Kafka producer
-│   ├── streaming/             # Spark streaming job
+│   ├── kafka_consumer_etl/    # Python Kafka Consumer ETL
 │   ├── data_validator.py      # Data validation utilities
 │   └── historical_data_generator.py
 ├── tests/                     # Test suite
 ├── docker-compose.yml         # Local development environment
 ├── Makefile                   # Automation scripts
 └── README.md                  # This file
-```
 
-## 🔍 Troubleshooting
+🔍 Troubleshooting
+Common Issues
+Kafka Connection Issues
 
-### Common Issues
+# Check Kafka status
+make kafka-status
 
-1. **Kafka Connection Issues**
-   ```bash
-   # Check Kafka status
-   make kafka-status
+# View Kafka logs
+make kafka-logs
 
-   # View Kafka logs
-   make kafka-logs
-   ```
+Python Consumer Job Failures
 
-2. **Spark Job Failures**
-   ```bash
-   # Check Spark logs
-   make streaming-logs
+# Check Python consumer logs
+make consumer-logs
 
-   # Restart streaming job
-   make streaming-restart
-   ```
+# Restart Python consumer job
+make consumer-restart
 
-3. **MinIO Access Issues**
-   ```bash
-   # Test S3 connectivity
-   make test-s3
+MinIO Access Issues
 
-   # Check MinIO logs
-   make minio-logs
-   ```
+# Test S3 connectivity
+make test-s3
 
-4. **Memory Issues**
-   ```bash
-   # Monitor resource usage
-   make monitor-resources
+# Check MinIO logs
+make minio-logs
 
-   # Adjust memory settings in docker-compose.yml
-   ```
+Memory Issues
 
-### Performance Tuning
+# Monitor resource usage
+make monitor-resources
 
-- **Kafka**: Adjust `num.partitions` and `replication.factor`
-- **Spark**: Tune `spark.sql.streaming.checkpointLocation` and batch intervals
-- **MinIO**: Configure appropriate storage classes and lifecycle policies
+# Adjust memory settings in docker-compose.yml
 
-## 📚 Additional Resources
+Performance Tuning
+Kafka: Adjust num.partitions and replication.factor
 
-- [Apache Kafka Documentation](https://kafka.apache.org/documentation/)
-- [Spark Structured Streaming Guide](https://spark.apache.org/docs/latest/structured-streaming-programming-guide.html)
-- [MinIO Documentation](https://docs.min.io/)
-- [Grafana Dashboard Creation](https://grafana.com/docs/grafana/latest/dashboards/)
+Python Consumer: Tune AGGREGATOR_BATCH_SIZE and AGGREGATOR_FLUSH_INTERVAL
 
-## 🤝 Contributing
+MinIO: Configure appropriate storage classes and lifecycle policies
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feat/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feat/amazing-feature`)
-5. Open a Pull Request
+📚 Additional Resources
+Apache Kafka Documentation
 
-## 📄 License
+MinIO Documentation
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Grafana Dashboard Creation
 
-## 🆘 Support
 
-For support and questions:
 
-- Create an issue in the GitHub repository
-- Check the troubleshooting section above
-- Review the monitoring dashboards for system health
-
----
-
-**Built with ❤️ for real-time data processing**

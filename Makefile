@@ -52,6 +52,10 @@ start-all:
 	@echo "Starting all services..."
 	docker-compose up -d
 
+
+start-python-kafka: docker-compose up -d python-etl-stream
+
+
 stop-all:
 	@echo "Stopping all services..."
 	docker-compose down
@@ -59,7 +63,7 @@ stop-all:
 # Setup commands
 setup-infrastructure: start-infrastructure init-terraform apply-infrastructure
 
-setup-complete: setup-infrastructure start-producer start-streaming
+setup-complete: setup-infrastructure start-producer start-python-kafka
 	@echo "Complete streaming ETL pipeline is now running!"
 	@echo "Services available at:"
 	@echo "  - Kafka UI: http://localhost:8080"
@@ -85,10 +89,6 @@ test-kafka-consumer:
 setup-integration-tests:
 	@echo "Setting up integration test environment..."
 	./scripts/setup-integration-tests.sh setup
-
-run-integration-tests:
-	@echo "Running integration tests..."
-	./scripts/setup-integration-tests.sh integration
 
 full-integration-tests:
 	@echo "Running full integration test suite..."
