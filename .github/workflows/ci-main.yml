@@ -195,6 +195,9 @@ jobs:
           - pattern: ".*"
         EOF
 
+    - name: Setup Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
     - name: Setup Infrastructure (equivalent to make setup-infrastructure)
       run: |
         echo "🚀 Starting infrastructure services..."
