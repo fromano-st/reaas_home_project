@@ -125,18 +125,31 @@ jobs:
         env:
           ZOOKEEPER_CLIENT_PORT: 2181
           ZOOKEEPER_TICK_TIME: 2000
+        options: >-
+          --health-cmd "echo ruok | nc localhost 2181"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
       kafka:
         image: confluentinc/cp-kafka:7.4.0
         env:
           KAFKA_BROKER_ID: 1
           KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092
+          KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+          KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
           KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+          KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+          KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+          KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
           KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
         ports:
           - 9092:9092
+        options: >-
+          --health-cmd "kafka-topics --bootstrap-server localhost:9092 --list"
+          --health-interval 30s
+          --health-timeout 10s
+          --health-retries 5
 
       minio:
         image: minio/minio
@@ -145,7 +158,12 @@ jobs:
           MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
         ports:
           - 9000:9000
-        #options: --health-cmd "curl --fail http://minio:9000/minio/health/live" --health-interval 10s --health-timeout 5s --health-retries 5
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 30s
+          --health-timeout 20s
+          --health-retries 3
+
 
     steps:
     - name: Checkout code
@@ -163,38 +181,81 @@ jobs:
         pip install -r src/producer/requirements.txt
         pip install -r src/streaming/requirements.txt
 
-    - name: Wait for services
+    - name: Wait for services to be healthy
       run: |
-        echo "Waiting for Kafka to be ready..."
-        timeout 60 bash -c 'until nc -z localhost 9092; do sleep 1; done'
+        echo "Waiting for services to be ready..."
 
+        # Wait for Kafka
+        echo "Waiting for Kafka..."
+        timeout 120 bash -c 'until nc -z localhost 9092; do sleep 2; done'
+
+        # Wait for MinIO
+        echo "Waiting for MinIO..."
+        timeout 120 bash -c 'until curl -f http://localhost:9000/minio/health/live; do sleep 2; done'
+
+        # Additional wait to ensure services are fully initialized
+        sleep 10
+
+        echo "All services are ready!"
 
     - name: Create .env file for testing
       run: |
         cat > .env << EOF
+        # Kafka Configuration
         KAFKA_BOOTSTRAP_SERVERS=localhost:9092
         KAFKA_TOPIC=iot-events-test
+
+        # Producer Configuration
         PRODUCER_INTERVAL=1.0
+
+        # Spark Configuration
         CHECKPOINT_LOCATION=/tmp/spark-checkpoints-test
-        OUTPUT_PATH=s3a://test-bucket/processed/
+        OUTPUT_PATH=s3a://test-bucket-data/processed/
+
+        # MinIO/S3 Configuration
         MINIO_ENDPOINT=http://localhost:9000
         AWS_ENDPOINT=http://localhost:9000
-        AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
+                AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+        # S3 Buckets
         AWS_S3_BUCKET_LANDING=test-bucket-landing
         AWS_S3_BUCKET_DATA=test-bucket-data
+
+        # Historical Data Configuration
         HISTORICAL_DAYS=1
         EOF
 
-    - name: Test S3 Connectivity
+    - name: Test Kafka Connectivity
+      run: |
+        echo "Testing Kafka connectivity..."
+        python3 -c "
+        from kafka import KafkaAdminClient
+        import sys
+        try:
+            admin = KafkaAdminClient(bootstrap_servers='localhost:9092', client_id='ci_test')
+            topics = admin.list_topics()
+            print(f'Kafka connection successful. Topics: {list(topics)}')
+        except Exception as e:
+            print(f'Kafka connection failed: {e}')
+            sys.exit(1)
+        "
+
+    - name: Test S3/MinIO Connectivity
       run: |
         cd tests/s3_tester
         python test_s3.py
 
     - name: Test Producer Integration
       run: |
+        echo "Testing producer..."
         cd src/producer
-        timeout 30 python producer.py || true
+        timeout 30 python producer.py || echo "Producer test completed (timeout expected)"
+
+    - name: Test Kafka-Spark Integration
+      run: |
+        echo "Testing Kafka-Spark integration..."
+        python3 test_fix.py
 
   docker-build:
     name: Docker Build Test
@@ -222,7 +283,7 @@ jobs:
       uses: docker/build-push-action@v5
       with:
         context: .
-        dockerfile: ./docker/producer/Dockerfile
+        dockerfile: ./docker/streaming/Dockerfile  # Fixed: was using producer Dockerfile
         push: false
         tags: spark-streaming:test
         cache-from: type=gha
@@ -237,34 +298,91 @@ jobs:
         cache-from: type=gha
         cache-to: type=gha,mode=max
 
+    - name: Test Docker Images
+      run: |
+        echo "Testing built Docker images..."
+
+        # Test producer image
+        docker run --rm iot-producer:test python3 -c "import producer; print('Producer image OK')"
+
+        # Test s3-tester image
+        docker run --rm s3-tester:test python3 -c "import test_s3; print('S3 tester image OK')"
+
+  end-to-end-test:
+    name: End-to-End Docker Test
+    runs-on: ubuntu-latest
+    needs: docker-build
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Create test environment
+      run: |
+        # Create directories
+        mkdir -p tmp/spark-checkpoints
+        chmod 777 tmp/spark-checkpoints
+
+        # Create test .env
+        cp .env .env.test
+
+    - name: Run Docker Compose Test
+      run: |
+        echo "Running end-to-end Docker Compose test..."
+
+        # Start infrastructure services
+        docker-compose -f docker-compose-fixed.yml up -d zookeeper kafka minio
+
+        # Wait for services
+        sleep 60
+
+        # Check service health
+        docker-compose -f docker-compose-fixed.yml ps
+
+        # Run S3 test
+        docker-compose -f docker-compose-fixed.yml run --rm s3-tester
+
+        # Start producer briefly
+        docker-compose -f docker-compose-fixed.yml up -d iot-producer
+        sleep 30
+
+        # Check logs
+        docker-compose -f docker-compose-fixed.yml logs iot-producer
+
+        # Cleanup
+        docker-compose -f docker-compose-fixed.yml down -v
+
   notify-success:
     name: Notify Success
     runs-on: ubuntu-latest
-    needs: [lint-and-format, unit-tests, integration-tests, docker-build]
+    needs: [lint-and-format, unit-tests, integration-tests, docker-build, end-to-end-test]
     if: success()
 
     steps:
     - name: Success Notification
       run: |
-        echo "All CI checks passed successfully!"
-        echo "Unit tests passed"
-        echo "Integration tests passed"
-        echo "Docker images built successfully"
-        echo "Ready for deployment"
+        echo "🎉 All CI checks passed successfully!"
+        echo "✅ Lint and format checks passed"
+        echo "✅ Unit tests passed"
+        echo "✅ Integration tests passed"
+        echo "✅ Docker images built successfully"
+        echo "✅ End-to-end tests passed"
+        echo "🚀 Ready for deployment"
 
   notify-failure:
     name: Notify Failure
     runs-on: ubuntu-latest
-    needs: [lint-and-format, unit-tests, integration-tests, docker-build]
+    needs: [lint-and-format, unit-tests, integration-tests, docker-build, end-to-end-test]
     if: failure()
 
     steps:
     - name: Failure Notification
       run: |
-        echo "CI pipeline failed!"
+        echo "❌ CI pipeline failed!"
         echo "Please check the failed jobs and fix the issues."
         echo "Lint and Format: ${{ needs.lint-and-format.result }}"
         echo "Unit Tests: ${{ needs.unit-tests.result }}"
         echo "Integration Tests: ${{ needs.integration-tests.result }}"
         echo "Docker Build: ${{ needs.docker-build.result }}"
+        echo "End-to-End Test: ${{ needs.end-to-end-test.result }}"
         exit 1
