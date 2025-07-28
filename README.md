@@ -1,286 +1,47 @@
-Real-Time Streaming ETL Pipeline
-A production-grade streaming data pipeline using Apache Kafka, a Python Kafka Consumer, and MinIO for real-time IoT data processing and analytics.
+# Real-Time Streaming ETL Pipeline
 
-🏗️ Architecture Overview
-This project implements a complete streaming ETL pipeline with the following components:
+This repository contains the solution for the Real-Time Streaming ETL take-home assignment, focusing on designing a production-grade streaming data pipeline using open-source technologies, integrating cloud services, and implementing live observability.
 
-Data Ingestion: Apache Kafka with custom IoT event producer
+## Implemented Components and Deviations
 
-Stream Processing: Python Kafka Consumer for real-time ETL
+The following sections outline the status of each task and any specific choices or deviations made during the implementation.
 
-Storage: MinIO (S3-compatible) for processed data in Parquet format
+### 1. Ingestion
+**Status**: Completed
 
-Monitoring: Prometheus + Grafana for observability
+The streaming ingestion system has been successfully deployed, including a custom JSON producer that periodically emits records.
 
-Infrastructure: Terraform for infrastructure as code
+### 2. Processing Engine
+**Status**: Completed
 
-CI/CD: GitHub Actions for automated testing and deployment
+The streaming framework to consume from the message broker and perform ETL (parsing, filtering, windowed transformations, and aggregation/deduplication) has been implemented.
 
-📋 Prerequisites
-To execute this pipeline locally, you will need the following:
+**Note on Implementation**: Due to issues encountered with Spark configuration during development, the processing engine was implemented in Python instead of Spark Structured Streaming.
 
-Docker and Docker Compose: For containerizing and orchestrating services.
+### 3. Sink to Spark-based Storage
+**Status**: Completed
 
-Python 3.11+: For running the IoT event producer and the Python Kafka consumer.
+Processed data is successfully written to a storage system in Parquet format.
 
-Terraform 1.6+: (Optional) For provisioning infrastructure as code.
+**Note on Implementation**: To avoid costs associated with AWS S3 for this Proof-of-Concept (POC) and due to its strong similarities with S3, MinIO was chosen as the storage solution instead of AWS S3.
 
-Make: For automation scripts and simplified command execution.
+### 4. Observability and Live Monitoring
+**Status**: Partially Completed
 
-Git: For cloning the repository.
+A monitoring setup, including Grafana and Prometheus, has been deployed to provide real-time dashboards with metrics on ingestion, processing, and data throughput.
 
-🚀 Quick Start
-1. Clone and Setup
-git clone <repository-url>
-cd streaming-etl-pipeline
-cp _env_sample.txt .env  # Edit with your configuration
+**Note on Implementation**: While the services appear to be running correctly, some configuration issues are preventing data from being displayed on the Grafana dashboard. Further investigation is needed to resolve this.
 
-2. Start the Infrastructure
-# Start all services
-make start-all
+### 5. Repository and Automation
+**Status**: Completed
 
-# Or start individual components
-make
-start-infrastructure
-start-producer
-start-streaming
-start-python-kafka
+All code is version-controlled in this GitHub repository.
 
-3. Deploy Infrastructure (Optional)
-# Initialize and apply Terraform
-make terraform-init
-make terraform-plan
-make terraform-apply
+**Automation**: GitHub Actions have been utilized for Continuous Integration (CI), including unit and integration tests. Shell scripts are provided for one-command setup.
 
-4. Start Data Pipeline
-# Start the producer
-make producer-start
+### 6. Spark Query
+**Status**:  Partially Completed
 
-# Start the Python consumer job
-make consumer-start
+A Spark query was developed to calculate the 95th percentile of event duration. This calculation is performed per device type, per day, with outliers excluded. The query also filters for device types that have a sufficient number of distinct events.
 
-# Generate historical data
-make historical-data
-
-5. Access Monitoring
-Grafana Dashboard: http://localhost:3000 (admin/admin123)
-
-Kafka UI: http://localhost:8080
-
-MinIO Console: http://localhost:9001 (minioadmin/minioadmin123)
-
-Prometheus: http://localhost:9090
-
-📊 Data Schema
-IoT Event Schema
-{
-  "event_duration": 1.5,
-  "device_type": "TEMPERATURE_SENSOR",
-  "device_id": "temp_001_living_room",
-  "timestamp": "2025-01-15T10:30:00Z",
-  "location": "Living Room",
-  "value": 23.5,
-  "unit": "°C",
-  "battery_level": 85,
-  "signal_strength": -65,
-  "metadata": {
-    "firmware_version": "1.2.3",
-    "calibration_date": "2024-12-01"
-  }
-}
-
-Supported Device Types
-TEMPERATURE_SENSOR: Temperature readings (°C)
-
-HUMIDITY_SENSOR: Humidity levels (%)
-
-PRESSURE_SENSOR: Atmospheric pressure (hPa)
-
-LIGHT_SENSOR: Light intensity (lux)
-
-MOTION_DETECTOR: Motion detection (boolean)
-
-DOOR_SENSOR: Door state (boolean)
-
-WINDOW_SENSOR: Window state (boolean)
-
-SMOKE_DETECTOR: Smoke detection (boolean)
-
-CO2_SENSOR: CO2 concentration (ppm)
-
-AIR_QUALITY_SENSOR: Air quality index (0-500)
-
-🔧 Configuration
-Environment Variables
-Key configuration options in .env:
-
-# Kafka Configuration
-KAFKA_BOOTSTRAP_SERVERS=kafka:29092
-KAFKA_TOPIC=iot-events
-
-# Producer Configuration
-PRODUCER_INTERVAL=2.0
-
-# Python Consumer Configuration
-AGGREGATOR_BATCH_SIZE=100
-AGGREGATOR_FLUSH_INTERVAL=30
-OUTPUT_PATH=s3a://reaas-home-project-data/processed/
-
-# MinIO/S3 Configuration
-MINIO_ENDPOINT=http://localhost:9000
-AWS_ACCESS_KEY_ID=minioadmin
-AWS_SECRET_ACCESS_KEY=minioadmin123
-
-# Monitoring
-GRAFANA_ADMIN_PASSWORD=admin123
-
-# Historical Data
-HISTORICAL_DAYS=7
-
-📈 Monitoring and Observability
-Grafana Dashboards
-The system includes pre-configured Grafana dashboards showing:
-
-Message Volume: Real-time message throughput
-
-Processing Latency: End-to-end processing delays
-
-Error Rates: Failed message processing
-
-Resource Utilization: CPU, memory, and disk usage
-
-Kafka Metrics: Topic lag, partition distribution
-
-Storage Metrics: MinIO bucket usage and performance
-
-Key Metrics
-kafka_server_brokertopicmetrics_messagesinpersec: Messages per second
-
-kafka_server_brokertopicmetrics_bytesinpersec: Bytes per second
-
-kafka_consumer_lag_sum: Consumer lag
-
-python_consumer_batch_processing_time: Batch processing time (if exposed by consumer)
-
-minio_bucket_usage_total_bytes: Storage usage
-
-🧪 Testing
-Unit Tests
-# Run all unit tests
-make test
-
-# Run specific test files
-make test-producer
-make test-consumer # Assuming tests for the Python consumer
-make test-validator
-
-Integration Tests
-# Run integration tests
-make test-integration
-
-# Test S3 connectivity
-make test-s3
-
-Load Testing
-# Generate high-volume test data
-make load-test
-
-# Monitor performance during load test
-make monitor-load
-
-🏭 Production Deployment
-Infrastructure Provisioning
-# Plan infrastructure changes
-make terraform-plan
-
-# Apply infrastructure
-make terraform-apply
-
-# Destroy infrastructure (careful!)
-make terraform-destroy
-
-CI/CD Pipeline
-The project includes GitHub Actions workflows:
-
-Feature Branch CI: Linting, formatting, security scans
-
-Main Branch CI: Full testing, integration tests, Docker builds
-
-CD Pipeline: Automated Terraform deployment
-
-Security Considerations
-All secrets managed via environment variables
-
-Network security groups restrict access
-
-Data encryption in transit and at rest
-
-Regular security scanning with Bandit and Safety
-
-📁 Project Structure
-.
-├── .github/workflows/          # GitHub Actions CI/CD
-├── config/                     # Configuration files
-│   ├── grafana/               # Grafana dashboards and provisioning
-│   ├── jmx-exporter.yml       # JMX metrics configuration
-│   └── prometheus.yml         # Prometheus configuration
-├── infra/terraform/           # Infrastructure as Code
-├── src/                       # Source code
-│   ├── producer/              # Kafka producer
-│   ├── kafka_consumer_etl/    # Python Kafka Consumer ETL
-│   ├── data_validator.py      # Data validation utilities
-│   └── historical_data_generator.py
-├── tests/                     # Test suite
-├── docker-compose.yml         # Local development environment
-├── Makefile                   # Automation scripts
-└── README.md                  # This file
-
-🔍 Troubleshooting
-Common Issues
-Kafka Connection Issues
-
-# Check Kafka status
-make kafka-status
-
-# View Kafka logs
-make kafka-logs
-
-Python Consumer Job Failures
-
-# Check Python consumer logs
-make consumer-logs
-
-# Restart Python consumer job
-make consumer-restart
-
-MinIO Access Issues
-
-# Test S3 connectivity
-make test-s3
-
-# Check MinIO logs
-make minio-logs
-
-Memory Issues
-
-# Monitor resource usage
-make monitor-resources
-
-# Adjust memory settings in docker-compose.yml
-
-Performance Tuning
-Kafka: Adjust num.partitions and replication.factor
-
-Python Consumer: Tune AGGREGATOR_BATCH_SIZE and AGGREGATOR_FLUSH_INTERVAL
-
-MinIO: Configure appropriate storage classes and lifecycle policies
-
-📚 Additional Resources
-Apache Kafka Documentation
-
-MinIO Documentation
-
-Grafana Dashboard Creation
-
-
-
+There were some errors during the execution of the Spark job.

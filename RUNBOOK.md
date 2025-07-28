@@ -1,432 +1,706 @@
-# Operations Runbook
+# Real-Time Streaming ETL Pipeline Runbook
 
-This runbook provides step-by-step procedures for operating and maintaining the Real-Time Streaming ETL Pipeline.
+## Table of Contents
+- [Overview](#overview)
+- [System Architecture](#system-architecture)
+- [Component Details](#component-details)
+- [Data Flow](#data-flow)
+- [Prerequisites](#prerequisites)
+- [Installation & Setup](#installation--setup)
+- [Configuration](#configuration)
+- [Operations](#operations)
+- [Monitoring & Observability](#monitoring--observability)
+- [Data Schema](#data-schema)
+- [Troubleshooting](#troubleshooting)
+- [Maintenance](#maintenance)
+- [Security Considerations](#security-considerations)
 
-## 🚨 Emergency Procedures
+## Overview
 
-### System Down - Complete Outage
+This runbook provides comprehensive documentation for a production-grade real-time streaming ETL pipeline designed to process IoT sensor data. The system implements a complete data processing workflow from ingestion through storage, with real-time monitoring and analytics capabilities.
 
-1. **Check Infrastructure Status**
-   ```bash
-   make status-all
-   docker-compose ps
-   ```
+### Key Features
+- **Real-time Data Processing**: Sub-second latency for IoT event processing
+- **Scalable Architecture**: Horizontally scalable components using containerization
+- **Fault Tolerance**: At-least-once delivery guarantees with error handling
+- **Observability**: Comprehensive monitoring with Prometheus and Grafana
+- **Data Quality**: Schema validation and quality checks throughout the pipeline
+- **Storage Optimization**: Parquet format with partitioning for efficient querying
 
-2. **Restart All Services**
-   ```bash
-   make down
-   make up
-   ```
+### Technology Stack
+- **Message Broker**: Apache Kafka with Zookeeper
+- **Stream Processing**: Python-based Kafka consumers with windowed aggregations
+- **Batch Processing**: Apache Spark for complex analytics
+- **Storage**: MinIO (S3-compatible) object storage
+- **Monitoring**: Prometheus, Grafana, Kafka UI
+- **Containerization**: Docker and Docker Compose
+- **Infrastructure**: Terraform for infrastructure as code
 
-3. **Verify Service Health**
-   ```bash
-   make health-check
-   ```
+## System Architecture
 
-4. **Check Monitoring Dashboards**
-   - Grafana: http://localhost:3000
-   - Verify all metrics are flowing
+### High-Level Architecture
 
-### Kafka Cluster Issues
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   IoT Devices   │───▶│  Kafka Broker   │───▶│ Stream Processor│
+│   (Simulated)   │    │   + Zookeeper   │    │  (Python ETL)   │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │                        │
+                                ▼                        ▼
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│  Kafka UI       │    │   Monitoring    │    │   MinIO S3      │
+│  (Management)   │    │ Prometheus +    │    │   (Storage)     │
+└─────────────────┘    │   Grafana       │    └─────────────────┘
+                       └─────────────────┘              │
+                                                        ▼
+                                              ┌─────────────────┐
+                                              │  Spark ETL      │
+                                              │ (Analytics)     │
+                                              └─────────────────┘
+```
 
-1. **Check Kafka Status**
-   ```bash
-   make kafka-status
-   docker-compose logs kafka
-   ```
+### Component Architecture
 
-2. **Common Kafka Issues:**
-   - **Broker Down**: Restart with `make kafka-restart`
-   - **Topic Issues**: Recreate topics with `make kafka-topics-create`
-   - **Consumer Lag**: Check consumer group status
+#### 1. Data Ingestion Layer
+- **IoT Producer** (`producer.py`):
+  - Simulates real IoT devices generating sensor data
+  - Multi-threaded architecture with health check endpoints
+  - Supports 10 device types with realistic data patterns
+  - Configurable event rates and device counts
+- **Apache Kafka**:
+  - High-throughput message broker for event streaming
+  - Single broker setup with auto-topic creation
+  - JMX metrics enabled for monitoring
+- **Zookeeper**:
+  - Coordination service for Kafka cluster management
+  - Persistent data storage for cluster state
 
-3. **Kafka Recovery**
-   ```bash
-   # Stop Kafka
-   docker-compose stop kafka zookeeper
-   
-   # Clean data (if necessary)
-   docker-compose down -v
-   
-   # Restart
-   make kafka-up
-   ```
+#### 2. Stream Processing Layer
+- **Python Kafka Consumer** (`kafka_aggregator.py`):
+  - Real-time ETL processing with windowed aggregations
+  - Pydantic-based schema validation and quality checks
+  - Thread-safe aggregation with configurable batch sizes
+  - Automatic retry logic and graceful error handling
+- **Spark Streaming**:
+  - Alternative processing engine for complex transformations
+  - Structured streaming with watermarking support
+- **Data Validation**:
+  - Schema enforcement using Pydantic models
+  - Quality flags for battery level and signal strength
+  - Invalid data logging and discarding
 
-### Spark Streaming Job Failures
+#### 3. Storage Layer
+- **MinIO**:
+  - S3-compatible object storage for raw and processed data
+  - Health checks and automatic bucket creation
+  - Configurable retention policies
+- **Parquet Format**:
+  - Columnar storage format optimized for analytics
+  - Snappy compression for space efficiency
+  - Schema evolution support
+- **Partitioning**:
+  - Time-based partitioning (year/month/day/hour) for efficient querying
+  - Separate paths for raw and aggregated data
 
-1. **Check Streaming Job Status**
-   ```bash
-   make streaming-status
-   docker-compose logs spark-streaming
-   ```
+#### 4. Analytics Layer
+- **Spark ETL** (`spark_s3_percentile_etl.py`):
+  - Batch processing for complex analytics and percentile calculations
+  - Statistical outlier detection using 3-sigma rule
+  - Memory-optimized operations with configurable parallelism
+- **Query Engine**:
+  - SQL-based analytics with outlier detection and filtering
+  - Support for complex aggregations and window functions
+  - CSV output for result validation
 
-2. **Common Issues:**
-   - **Checkpoint Corruption**: Clear checkpoints and restart
-   - **Memory Issues**: Increase Spark memory allocation
-   - **Schema Evolution**: Update schema handling
+#### 5. Monitoring Layer
+- **Prometheus**:
+  - Metrics collection and storage with configurable retention
+  - Custom metrics from application components
+- **Grafana**:
+  - Real-time dashboards and alerting
+  - Pre-configured dashboards for pipeline monitoring
+- **JMX Exporter**:
+  - Kafka metrics exposure via HTTP endpoint
+  - Custom JMX configuration for relevant metrics
+- **Kafka UI**:
+  - Web-based Kafka cluster management and monitoring
+  - Topic, consumer group, and message inspection
 
-3. **Restart Streaming Job**
-   ```bash
-   make streaming-stop
-   make streaming-start
-   ```
+## Component Details
 
-### Storage (MinIO) Issues
+### IoT Event Producer (`producer.py`)
 
-1. **Check MinIO Status**
-   ```bash
-   make minio-status
-   docker-compose logs minio
-   ```
+The IoT producer simulates real-world IoT devices by generating synthetic sensor data with realistic patterns and variations.
 
-2. **Test S3 Connectivity**
-   ```bash
-   make test-s3
-   ```
+**Key Features:**
+- Supports 10 different device types (temperature, humidity, pressure, etc.)
+- Configurable event generation rates and patterns
+- Built-in health check endpoint for monitoring
+- Realistic data generation with proper units and ranges
 
-3. **MinIO Recovery**
-   ```bash
-   # Restart MinIO
-   make minio-restart
-   
-   # Verify buckets exist
-   make minio-buckets-create
-   ```
+**Device Types Supported:**
+- Temperature Sensors (°C)
+- Humidity Sensors (%)
+- Pressure Sensors (hPa)
+- Light Sensors (lux)
+- Motion Detectors (boolean)
+- Door/Window Sensors (boolean)
+- Smoke Detectors (boolean)
+- CO2 Sensors (ppm)
+- Air Quality Sensors (0-500 index)
 
-## 📊 Monitoring and Alerting
+### Kafka Consumer ETL (`kafka_aggregator.py`)
 
-### Key Metrics to Monitor
+The Python-based stream processor consumes events from Kafka and performs real-time ETL operations.
 
-1. **Message Throughput**
-   - Metric: `kafka_server_brokertopicmetrics_messagesinpersec`
-   - Alert: < 10 messages/sec for > 5 minutes
+**Processing Features:**
+- **Schema Validation**: Pydantic-based validation with error handling
+- **Quality Checks**: Battery level and signal strength validation
+- **Time Windowing**: 1-minute windows with 2-minute watermark for late data
+- **Aggregations**: Statistical computations per device per window
+- **Fault Tolerance**: Automatic retry logic and error recovery
 
-2. **Consumer Lag**
-   - Metric: `kafka_consumer_lag_sum`
-   - Alert: > 1000 messages lag
+**Aggregation Metrics:**
+- Average, min, max sensor values
+- Standard deviation of readings
+- Event counts and durations
+- Battery and signal strength averages
+- Quality flag counts (low battery, weak signal)
 
-3. **Processing Latency**
-   - Metric: `spark_streaming_batch_processing_time`
-   - Alert: > 30 seconds processing time
+### Spark Analytics Engine (`spark_s3_percentile_etl.py`)
 
-4. **Error Rate**
-   - Metric: `kafka_server_brokertopicmetrics_failedproducerequestspersec`
-   - Alert: > 1% error rate
+Advanced analytics engine for complex queries and statistical computations.
 
-5. **Storage Usage**
-   - Metric: `minio_bucket_usage_total_bytes`
-   - Alert: > 80% disk usage
+**Capabilities:**
+- **Outlier Detection**: 3-sigma rule for statistical outlier removal
+- **Percentile Calculations**: 95th percentile computations with statistical rigor
+- **Data Filtering**: Minimum event count thresholds (500+ events per day)
+- **Performance Optimization**: Memory tuning and shuffle optimization
 
-### Grafana Dashboard Checks
+## Data Flow
 
-Daily monitoring checklist:
+### Real-Time Processing Flow
 
-- [ ] Message volume trends
-- [ ] Processing latency within SLA
-- [ ] No error spikes
-- [ ] Storage growth rate normal
-- [ ] All services healthy
+1. **Data Generation**: IoT producer generates events every 1-5 seconds
+2. **Message Queuing**: Events published to Kafka topic `iot-events`
+3. **Stream Processing**: Python consumer processes events in 1-minute windows
+4. **Data Validation**: Schema validation and quality checks applied
+5. **Aggregation**: Statistical computations performed per device
+6. **Storage**: Raw and aggregated data written to MinIO in Parquet format
+7. **Monitoring**: Metrics collected and visualized in real-time
 
-## 🔧 Maintenance Procedures
+### Batch Processing Flow
 
-### Daily Maintenance
+1. **Data Reading**: Spark reads Parquet files from MinIO
+2. **Outlier Detection**: Statistical outlier removal using 3-sigma rule
+3. **Filtering**: Device types with <500 events filtered out
+4. **Percentile Calculation**: 95th percentile computed per device type per day
+5. **Results Storage**: Output saved as CSV for validation
 
-1. **Health Check**
-   ```bash
-   make health-check-all
-   ```
+### Data Partitioning Strategy
 
-2. **Log Review**
-   ```bash
-   make logs-summary
-   ```
+```
+s3://bucket/
+├── raw/
+│   └── year=2025/month=07/day=28/hour=14/
+│       └── events_1722175234.parquet
+└── aggregated/
+    └── year=2025/month=07/day=28/hour=14/
+        └── agg_1722175234.parquet
+```
 
-3. **Disk Space Check**
-   ```bash
-   df -h
-   docker system df
-   ```
+## Prerequisites
 
-### Weekly Maintenance
+### System Requirements
+- **Operating System**: Unix-based environment (Linux, macOS)
+- **Memory**: Minimum 8GB RAM (16GB recommended)
+- **Storage**: 10GB free disk space
+- **Network**: Internet connectivity for Docker image downloads
 
-1. **Performance Review**
-   - Review Grafana dashboards
-   - Check for performance degradation
-   - Analyze consumer lag trends
+### Software Dependencies
+- **Docker**: Version 20.0+ with Docker Compose
+- **Python**: Version 3.11+ for development and testing
+- **Make**: For automation scripts
+- **Git**: For version control
+- **AWS CLI**: (Optional) For cloud deployment
 
-2. **Log Rotation**
-   ```bash
-   make logs-rotate
-   ```
+### Development Tools
+- **Terraform**: Version 1.10+ for infrastructure provisioning
+- **pytest**: For running unit and integration tests
 
-3. **Backup Verification**
-   ```bash
-   make backup-verify
-   ```
+## Installation & Setup
 
-### Monthly Maintenance
+### 1. Repository Setup
 
-1. **Capacity Planning**
-   - Review storage growth
-   - Analyze throughput trends
-   - Plan for scaling needs
+```bash
+# Clone the repository
+git clone <repository-url>
+cd <project-directory>
 
-2. **Security Updates**
-   ```bash
-   make security-update
-   ```
+# Copy environment configuration
+cp _env_sample.txt .env
+```
 
-3. **Performance Tuning**
-   - Review and adjust Kafka partitions
-   - Optimize Spark configurations
-   - Update resource allocations
+### 2. Environment Configuration
 
-## 🔄 Operational Procedures
+Edit the `.env` file with your specific configuration:
+
+```bash
+# Kafka Configuration
+KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+KAFKA_TOPIC=iot-events
+KAFKA_GROUP_ID=iot-consumer-group
+
+# MinIO Configuration
+MINIO_ROOT_USER=minioadmin
+MINIO_ROOT_PASSWORD=minioadmin123
+AWS_ENDPOINT=http://minio:9000
+AWS_ACCESS_KEY_ID=minioadmin
+AWS_SECRET_ACCESS_KEY=minioadmin123
+AWS_S3_BUCKET_DATA=iot-data
+
+# Monitoring Configuration
+GRAFANA_ADMIN_PASSWORD=admin123
+
+# Producer Configuration
+PRODUCER_EVENTS_PER_SECOND=2
+PRODUCER_DEVICE_COUNT=50
+```
+
+### 3. Infrastructure Deployment
+
+
+
+#### Option A: Step-by-Step Deployment
+```bash
+# 1. Start infrastructure services
+make setup-infrastructure
+
+# 2. Start data pipeline
+make start-producer
+docker-compose up -d python-etl-stream
+
+# 3. Generate historical data (optional)
+make generate-historical-data
+```
+#### Option B: Quick Start
+```bash
+# Start all services with one command
+make start-all
+```
+
+#### Option C: Terraform Deployment
+```bash
+# Initialize and apply Terraform
+make terraform-init
+make terraform-plan
+make terraform-apply
+```
+
+### 4. Service Verification
+
+```bash
+# Check service status
+make status
+
+# View logs
+make logs-all
+
+# Test connectivity
+make test-s3
+```
+
+## Configuration
+
+### Kafka Configuration
+
+**Topic Configuration:**
+- **Topic Name**: `iot-events`
+- **Partitions**: 3 (configurable)
+- **Replication Factor**: 1 (single broker setup)
+- **Retention**: 7 days
+
+**Consumer Configuration:**
+- **Group ID**: `iot-consumer-group`
+- **Auto Offset Reset**: `earliest`
+- **Enable Auto Commit**: `true`
+- **Session Timeout**: 30 seconds
+
+### Stream Processing Configuration
+
+**Window Configuration:**
+- **Window Size**: 1 minute
+- **Watermark**: 2 minutes (late data tolerance)
+- **Trigger**: Processing time trigger
+
+**Aggregation Configuration:**
+- **Batch Size**: 100 events
+- **Flush Interval**: 30 seconds
+- **Quality Thresholds**:
+  - Battery Level: ≥20%
+  - Signal Strength: ≥-90 dBm
+
+### Storage Configuration
+
+**MinIO Configuration:**
+- **Endpoint**: `http://minio:9000`
+- **Bucket**: `iot-data`
+- **Format**: Parquet with Snappy compression
+- **Partitioning**: Time-based (year/month/day/hour)
+
+**Spark Configuration:**
+- **Master**: `local[*]` (all available cores)
+- **Memory**: 2GB driver, 1GB executor
+- **Serializer**: Kryo serializer for performance
+
+## Operations
+
+### Starting the Pipeline
+
+#### Complete Pipeline Startup
+```bash
+# Start all services
+make start-all
+
+# Verify services are running
+docker-compose ps
+
+# Check logs for any errors
+make logs-all
+```
+
+#### Individual Service Management
+```bash
+# Start producer only
+make start-producer
+
+# Start streaming consumer
+docker-compose up -d python-etl-stream
+
+# Start Spark ETL job
+docker-compose up spark-etl
+```
+
+### Stopping the Pipeline
+
+```bash
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (data loss)
+docker-compose down -v
+
+# Clean all data
+make clean-all
+```
+
+### Data Pipeline Operations
+
+#### Monitoring Data Flow
+```bash
+# Check Kafka topics
+docker-compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
+
+# Monitor consumer lag
+docker-compose exec kafka kafka-consumer-groups --bootstrap-server localhost:9092 --describe --group iot-consumer-group
+
+# Check MinIO buckets
+docker-compose exec minio mc ls minio/iot-data/
+```
+
+#### Running Analytics Queries
+```bash
+# Execute Spark percentile query
+docker-compose up spark-etl
+
+# View results
+docker-compose exec spark-etl cat /opt/spark/work-dir/output/percentile_results.csv
+```
 
 ### Scaling Operations
 
-#### Scale Kafka Partitions
+#### Horizontal Scaling
 ```bash
-# Increase partitions for topic
-kafka-topics.sh --bootstrap-server kafka:29092 \
-  --alter --topic iot-events --partitions 6
+# Scale producer instances
+docker-compose up -d --scale iot-producer=3
+
+# Scale consumer instances
+docker-compose up -d --scale python-etl-stream=2
 ```
 
-#### Scale Spark Resources
-```bash
-# Update docker-compose.yml
+#### Vertical Scaling
+Modify `docker-compose.yml` to adjust resource limits:
+```yaml
 services:
-  spark-streaming:
-    environment:
-      - SPARK_DRIVER_MEMORY=2g
-      - SPARK_EXECUTOR_MEMORY=4g
-      - SPARK_EXECUTOR_CORES=2
+  python-etl-stream:
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: '1.0'
 ```
 
-#### Scale Storage
+## Monitoring & Observability
+
+### Access Points
+
+| Service | URL | Credentials |
+|---------|-----|-------------|
+| Grafana Dashboard | http://localhost:3000 | admin/admin123 |
+| Kafka UI | http://localhost:8080 | None |
+| MinIO Console | http://localhost:9001 | minioadmin/minioadmin123 |
+| Prometheus | http://localhost:9090 | None |
+
+### Key Metrics to Monitor
+
+#### System Health Metrics
+- **Service Availability**: All containers running and healthy
+- **Resource Usage**: CPU, memory, disk utilization
+- **Network Connectivity**: Inter-service communication
+
+#### Kafka Metrics
+- **Message Throughput**: Messages per second produced/consumed
+- **Consumer Lag**: Delay between production and consumption
+- **Partition Distribution**: Even distribution across partitions
+- **Error Rates**: Failed message processing rates
+
+
+
+## Data Schema
+
+### IoT Event Schema (Raw Data)
+
+```json
+{
+  "event_duration": 1.5,
+  "device_type": "TEMPERATURE_SENSOR",
+  "device_id": "temp_001_living_room",
+  "timestamp": "2025-01-15T10:30:00Z",
+  "location": "Living Room",
+  "value": 23.5,
+  "unit": "°C",
+  "battery_level": 85,
+  "signal_strength": -65,
+  "metadata": {
+    "firmware_version": "1.2.3",
+    "calibration_date": "2024-12-01"
+  }
+}
+```
+
+### Processed Data Schema (Aggregated)
+
+```json
+{
+  "window_start": "2025-01-15T10:30:00Z",
+  "window_end": "2025-01-15T10:31:00Z",
+  "device_id": "temp_001_living_room",
+  "device_type": "TEMPERATURE_SENSOR",
+  "location": "Living Room",
+  "unit": "°C",
+  "avg_value": 23.2,
+  "event_count": 12,
+  "min_value": 22.8,
+  "max_value": 23.7,
+  "stddev_value": 0.3,
+  "avg_event_duration": 1.4,
+  "avg_battery_level": 84.5,
+  "avg_signal_strength": -66.2,
+  "low_battery_count": 0,
+  "weak_signal_count": 1,
+  "year": 2025,
+  "month": 1,
+  "day": 15,
+  "hour": 10
+}
+```
+
+### Data Quality Flags
+
+- **is_valid_battery**: Battery level ≥ 20%
+- **is_valid_signal**: Signal strength ≥ -90 dBm
+- **processing_timestamp**: When the event was processed
+- **partition_fields**: year, month, day, hour for efficient querying
+
+## Testing
+### Testing Strategy
+The pipeline implements a comprehensive testing strategy covering unit tests, integration tests, and end-to-end validation to ensure data quality and system reliability.
+
+#### Unit Tests
+unit tests can be executed with pytest
+```
+pip install -r tests/requirements.txt
+pytest -v
+```
+#### Integration Tests
+ build the infrastructure:
+`make setup-infrastructure`
+then `test_s3` (test operation on MinIO storage) can be executed:
+`make test-s3`
+starting the producer is necessary for other tests:
+`make start-producer`
+it can be tested with:
+`docker-compose up kafka-consumer-tester`
+
+
+
+### CI/CD Pipeline
+The project includes GitHub Actions workflows:
+**Feature Branch CI:** Linting, formatting , Docker builds
+**Main Branch CI:** Full testing,Docker builds, integration tests
+**CD Pipeline:** Automated Terraform deployment
+
+## Troubleshooting
+
+### Common Issues and Solutions
+
+#### 1. Services Not Starting
+
+**Symptoms:**
+- Docker containers failing to start
+- Port conflicts
+- Resource allocation errors
+
+**Diagnosis:**
 ```bash
-# Add new MinIO volumes in docker-compose.yml
-volumes:
-  - minio_data1:/data1
-  - minio_data2:/data2
+# Check container status
+docker-compose ps
+
+# View container logs
+docker-compose logs <service-name>
+
+# Check resource usage
+docker stats
 ```
 
-### Data Management
-
-#### Historical Data Cleanup
+**Solutions:**
 ```bash
-# Clean old data (older than 30 days)
-make data-cleanup --days=30
+# Free up ports
+sudo lsof -i :9092  # Check Kafka port
+sudo kill -9 <PID>  # Kill conflicting process
+
+# Increase Docker resources
+# Docker Desktop: Settings > Resources > Advanced
+
+# Clean up Docker system
+docker system prune -a
 ```
 
-#### Data Backup
+#### 2. Kafka Connection Issues
+
+**Symptoms:**
+- Producer cannot connect to Kafka
+- Consumer lag increasing
+- Message delivery failures
+
+**Diagnosis:**
 ```bash
-# Backup processed data
-make backup-data --date=$(date +%Y-%m-%d)
+# Test Kafka connectivity
+docker-compose exec kafka kafka-topics --bootstrap-server localhost:9092 --list
+
+# Check Kafka logs
+docker-compose logs kafka
+
+# Monitor consumer groups
+docker-compose exec kafka kafka-consumer-groups --bootstrap-server localhost:9092 --list
 ```
 
-#### Data Restore
+**Solutions:**
 ```bash
-# Restore from backup
-make restore-data --backup-date=2025-01-15
+# Restart Kafka services
+docker-compose restart zookeeper kafka
+
+# Reset consumer group (data loss)
+docker-compose exec kafka kafka-consumer-groups --bootstrap-server localhost:9092 --group iot-consumer-group --reset-offsets --to-earliest --all-topics --execute
+
+# Check network connectivity
+docker-compose exec iot-producer ping kafka
 ```
 
-### Configuration Changes
+#### 3. MinIO Storage Issues
 
-#### Update Producer Configuration
-1. Edit `.env` file
-2. Restart producer: `make producer-restart`
-3. Verify changes: `make producer-status`
+**Symptoms:**
+- Cannot write to MinIO
+- Authentication failures
+- Bucket access errors
 
-#### Update Streaming Job Configuration
-1. Edit `src/streaming/streaming_etl.py`
-2. Rebuild image: `make streaming-build`
-3. Restart job: `make streaming-restart`
-
-#### Update Monitoring Configuration
-1. Edit `config/prometheus.yml` or `config/grafana/`
-2. Restart monitoring: `make monitoring-restart`
-3. Verify dashboards: Check Grafana UI
-
-## 🐛 Troubleshooting Guide
-
-### Performance Issues
-
-#### High Consumer Lag
-1. **Symptoms**: Messages backing up in Kafka
-2. **Diagnosis**:
-   ```bash
-   kafka-consumer-groups.sh --bootstrap-server kafka:29092 \
-     --describe --group spark-streaming-group
-   ```
-3. **Solutions**:
-   - Increase Spark parallelism
-   - Add more Kafka partitions
-   - Optimize processing logic
-
-#### Slow Processing
-1. **Symptoms**: High batch processing times
-2. **Diagnosis**: Check Spark UI and logs
-3. **Solutions**:
-   - Increase Spark resources
-   - Optimize transformations
-   - Adjust batch intervals
-
-#### Memory Issues
-1. **Symptoms**: OutOfMemory errors
-2. **Diagnosis**: Check container memory usage
-3. **Solutions**:
-   - Increase container memory limits
-   - Optimize data structures
-   - Implement data sampling
-
-### Data Quality Issues
-
-#### Schema Validation Failures
-1. **Symptoms**: Parsing errors in logs
-2. **Diagnosis**: Check data validator logs
-3. **Solutions**:
-   - Update schema definitions
-   - Implement schema evolution
-   - Add data cleansing logic
-
-#### Missing Data
-1. **Symptoms**: Gaps in processed data
-2. **Diagnosis**: Check producer and consumer logs
-3. **Solutions**:
-   - Verify producer connectivity
-   - Check Kafka retention settings
-   - Implement data recovery procedures
-
-### Network Issues
-
-#### Kafka Connectivity
-1. **Symptoms**: Connection timeouts
-2. **Diagnosis**: Test network connectivity
-3. **Solutions**:
-   - Check firewall rules
-   - Verify DNS resolution
-   - Update connection strings
-
-#### MinIO Access Issues
-1. **Symptoms**: S3 operation failures
-2. **Diagnosis**: Test S3 connectivity
-3. **Solutions**:
-   - Verify credentials
-   - Check endpoint configuration
-   - Test network connectivity
-
-## 📋 Checklists
-
-### Deployment Checklist
-
-Pre-deployment:
-- [ ] Code reviewed and approved
-- [ ] Tests passing
-- [ ] Configuration validated
-- [ ] Backup completed
-
-Deployment:
-- [ ] Deploy infrastructure changes
-- [ ] Update application code
-- [ ] Restart services
-- [ ] Verify health checks
-
-Post-deployment:
-- [ ] Monitor for errors
-- [ ] Validate data flow
-- [ ] Check performance metrics
-- [ ] Update documentation
-
-### Incident Response Checklist
-
-Detection:
-- [ ] Alert received
-- [ ] Severity assessed
-- [ ] Stakeholders notified
-
-Investigation:
-- [ ] Logs reviewed
-- [ ] Metrics analyzed
-- [ ] Root cause identified
-
-Resolution:
-- [ ] Fix implemented
-- [ ] Services restored
-- [ ] Monitoring verified
-
-Post-incident:
-- [ ] Incident documented
-- [ ] Lessons learned captured
-- [ ] Preventive measures implemented
-
-## 📞 Escalation Procedures
-
-### Severity Levels
-
-**P1 - Critical (Complete Outage)**
-- Response time: 15 minutes
-- Escalation: Immediate to on-call engineer
-- Communication: Hourly updates
-
-**P2 - High (Partial Outage)**
-- Response time: 1 hour
-- Escalation: Within 2 hours if unresolved
-- Communication: Every 2 hours
-
-**P3 - Medium (Performance Degradation)**
-- Response time: 4 hours
-- Escalation: Within 8 hours if unresolved
-- Communication: Daily updates
-
-**P4 - Low (Minor Issues)**
-- Response time: Next business day
-- Escalation: Within 3 days if unresolved
-- Communication: Weekly updates
-
-### Contact Information
-
-- **On-call Engineer**: [Contact details]
-- **Team Lead**: [Contact details]
-- **Infrastructure Team**: [Contact details]
-- **Security Team**: [Contact details]
-
-## 📚 Reference Commands
-
-### Quick Reference
-
+**Diagnosis:**
 ```bash
-# System Status
-make status-all
-make health-check
+# Check MinIO health
+curl http://localhost:9000/minio/health/live
 
-# Service Management
-make up / make down
-make restart-all
+# Test S3 operations
+make test-s3
 
-# Monitoring
-make logs-tail
-make metrics-check
-
-# Data Operations
-make data-validate
-make data-backup
-make data-restore
-
-# Troubleshooting
-make debug-kafka
-make debug-spark
-make debug-minio
+# Check MinIO logs
+docker-compose logs minio
 ```
 
-### Log Locations
+**Solutions:**
+```bash
+# Restart MinIO
+docker-compose restart minio
 
-- **Kafka**: `docker-compose logs kafka`
-- **Spark**: `docker-compose logs spark-streaming`
-- **MinIO**: `docker-compose logs minio`
-- **Producer**: `docker-compose logs producer`
-- **Monitoring**: `docker-compose logs prometheus grafana`
+# Recreate buckets
+make setup-infrastructure
 
+# Check credentials in .env file
+cat .env | grep MINIO
+```
+
+#### 4. Processing Pipeline Issues
+
+**Symptoms:**
+- High processing latency
+- Data validation errors
+- Missing aggregations
+
+**Diagnosis:**
+```bash
+# Check consumer logs
+docker-compose logs python-etl-stream
+
+# Monitor processing metrics
+curl http://localhost:9090/api/v1/query?query=kafka_consumer_lag_sum
+
+# Validate data schema
+docker-compose exec python-etl-stream python -c "from src.kafka_consumer_etl.schema import IoTEventValidator; print('Schema OK')"
+```
+
+**Solutions:**
+```bash
+# Restart processing services
+docker-compose restart python-etl-stream
+
+# Scale processing instances
+docker-compose up -d --scale python-etl-stream=2
+
+# Check data quality
+docker-compose logs python-etl-stream | grep "validation error"
+```
+
+#### 5. Monitoring and Dashboards
+
+**Symptoms:**
+- Grafana dashboards not loading
+- Missing metrics in Prometheus
+- JMX exporter connection issues
+
+**Diagnosis:**
+```bash
+# Check Prometheus targets
+curl http://localhost:9090/api/v1/targets
+
+# Test Grafana connectivity
+curl http://localhost:3000/api/health
+
+# Check JMX exporter
+curl http://localhost:5556/metrics
+```
 ---
 
-**Remember**: Always test procedures in a non-production environment first!
+## Conclusion
+
+This runbook provides comprehensive guidance for operating the real-time streaming ETL pipeline. For additional support or questions, refer to the project documentation.
+
+**Last Updated**: 2025-07-28

@@ -183,6 +183,31 @@ services:
     - AGGREGATOR_FLUSH_INTERVAL=30
     restart: unless-stopped
 
+  spark-etl:
+    build: ./src/spark_s3_etl
+    container_name: spark-s3-etl
+    environment:
+      - AWS_ENDPOINT=${AWS_ENDPOINT}
+      - AWS_ACCESS_KEY_ID=${AWS_ACCESS_KEY_ID}
+      - AWS_SECRET_ACCESS_KEY=${AWS_SECRET_ACCESS_KEY}
+      - AWS_S3_BUCKET_DATA=${AWS_S3_BUCKET_DATA}
+      - SPARK_MASTER=local[*]
+    volumes:
+      - ./:/opt/spark/work-dir
+      - spark-logs:/opt/spark/logs
+    networks:
+      - etl-network
+    depends_on:
+      - minio
+    command: >
+      bash -c "
+        echo 'Waiting for MinIO to be ready...' &&
+        sleep 10 &&
+        echo 'Starting Spark ETL job...' &&
+        ./run_etl.sh
+          --output-format csv
+      "
+
   s3-tester:
     networks:
       - etl-network
@@ -230,6 +255,7 @@ volumes:
   prometheus-data:
   grafana-data:
   minio-data:
+  spark-logs:
 
 networks:
   etl-network:

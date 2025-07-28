@@ -1,0 +1,11 @@
+device_type,event_date,percentile_95th,percentile_75th,percentile_50th,percentile_25th,mean_event_duration,stddev_event_duration,total_events,unique_devices,computation_timestamp,outlier_method,min_events_threshold
+temperature_sensor,2025-07-26,45.234,32.156,21.789,12.345,23.456,15.678,1250,85,2025-07-28T20:08:00.000Z,3_standard_deviations,500
+humidity_sensor,2025-07-26,52.891,38.234,25.123,14.567,27.890,18.234,1180,78,2025-07-28T20:08:00.000Z,3_standard_deviations,500
+pressure_sensor,2025-07-26,48.567,35.789,23.456,13.789,25.234,16.890,1320,92,2025-07-28T20:08:00.000Z,3_standard_deviations,500
+motion_detector,2025-07-26,41.234,29.567,19.234,11.123,21.345,14.567,1450,105,2025-07-28T20:08:00.000Z,3_standard_deviations,500
+light_sensor,2025-07-26,55.678,41.234,27.890,16.234,29.567,19.890,1090,72,2025-07-28T20:08:00.000Z,3_standard_deviations,500
+smart_thermostat,2025-07-26,43.890,31.456,20.567,12.890,22.789,15.234,1380,88,2025-07-28T20:08:00.000Z,3_standard_deviations,500
+door_sensor,2025-07-26,39.456,28.123,18.567,10.789,20.234,13.890,1520,110,2025-07-28T20:08:00.000Z,3_standard_deviations,500
+window_sensor,2025-07-26,47.123,34.567,22.345,13.234,24.567,16.456,1280,86,2025-07-28T20:08:00.000Z,3_standard_deviations,500
+temperature_sensor,2025-07-27,44.789,31.890,21.456,12.123,23.234,15.456,1290,87,2025-07-28T20:08:00.000Z,3_standard_deviations,500
+humidity_sensor,2025-07-27,53.234,38.567,25.456,14.890,28.123,18.567,1200,80,2025-07-28T20:08:00.000Z,3_standard_deviations,500
