@@ -66,9 +66,9 @@ class IoTStreamingETL:
         if not self.output_path:
             raise ValueError("OUTPUT_PATH environment variable is required")
 
-        self.minio_endpoint = os.getenv("MINIO_ENDPOINT")
-        if not self.minio_endpoint:
-            raise ValueError("MINIO_ENDPOINT environment variable is required")
+        self.aws_endpoint = os.getenv("AWS_ENDPOINT")
+        if not self.aws_endpoint:
+            raise ValueError("AWS_ENDPOINT environment variable is required")
 
         self.aws_access_key = os.getenv("AWS_ACCESS_KEY_ID")
         if not self.aws_access_key:
@@ -95,7 +95,7 @@ class IoTStreamingETL:
             .config("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
             .config("spark.sql.adaptive.enabled", "true")
             .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
-            .config("spark.hadoop.fs.s3a.endpoint", self.minio_endpoint)
+            .config("spark.hadoop.fs.s3a.endpoint", self.aws_endpoint)
             .config("spark.hadoop.fs.s3a.access.key", self.aws_access_key)
             .config("spark.hadoop.fs.s3a.secret.key", self.aws_secret_key)
             .config("spark.hadoop.fs.s3a.path.style.access", "true")
@@ -103,6 +103,18 @@ class IoTStreamingETL:
                 "spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem"
             )
             .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "false")
+            .config(
+                "spark.hadoop.fs.s3a.aws.credentials.provider",
+                "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
+            )
+            .config("spark.hadoop.fs.s3a.connection.timeout", "200000")
+            .config("spark.hadoop.fs.s3a.connection.establish.timeout", "40000")
+            .config("spark.hadoop.fs.s3a.connection.maximum", "100")
+            .config("spark.hadoop.fs.s3a.attempts.maximum", "10")
+            .config("spark.hadoop.fs.s3a.retry.limit", "5")
+            .config("spark.hadoop.fs.s3a.retry.interval", "500ms")
+            .config("spark.hadoop.fs.s3a.multipart.size", "104857600")
+            .config("spark.hadoop.fs.s3a.fast.upload", "true")
             .getOrCreate()
         )
 
@@ -138,11 +150,12 @@ class IoTStreamingETL:
             self.spark.readStream.format("kafka")
             .option("kafka.bootstrap.servers", self.kafka_bootstrap_servers)
             .option("subscribe", self.kafka_topic)
-            .option("startingOffsets", "latest")
+            .option("startingOffsets", "earliest")
             .option("failOnDataLoss", "false")
+            .option("kafka.security.protocol", "PLAINTEXT")
             .option("kafka.consumer.group.id", "iot-streaming-etl")
             .load()
-        )
+        )  # "startingOffsets", "latest"
 
         logger.info("Kafka stream reader configured")
         return kafka_df

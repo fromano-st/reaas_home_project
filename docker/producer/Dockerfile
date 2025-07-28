@@ -17,4 +17,4 @@ ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
 # Default command
-CMD ["python", "producer.py"]
+CMD ["python", "src/producer/producer.py"]

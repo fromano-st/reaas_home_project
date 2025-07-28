@@ -1,17 +1,16 @@
 """
 Unit tests for IoT event producer.
 """
-import os
-import sys
-from datetime import datetime, timezone
-from unittest.mock import Mock, patch
-
 import pytest
+import os
+from unittest.mock import Mock, patch
+from datetime import datetime, timezone
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.producer.producer import IoTDataGenerator, IoTEventProducer
-from src.producer.schema import DeviceType, IoTEvent
+from src.producer.schema import IoTEvent, DeviceType
 
 
 class TestIoTDataGenerator:

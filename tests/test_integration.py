@@ -1,19 +1,18 @@
 """
 Integration tests for the complete streaming ETL pipeline.
 """
+import pytest
 import json
 import os
 import sys
-import threading
-from datetime import datetime, timezone
 from unittest.mock import Mock, patch
-
-import pytest
+from datetime import datetime, timezone
+import threading
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from src.producer.producer import IoTDataGenerator, IoTEventProducer
-from src.producer.schema import DeviceType, IoTEvent
+from src.producer.schema import IoTEvent, DeviceType
 
 
 class TestPipelineIntegration:

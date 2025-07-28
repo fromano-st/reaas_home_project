@@ -1,15 +1,14 @@
 """
 Unit and integration tests for the HistoricalDataGenerator class.
 """
+import pytest
 import json
 import os
 import sys
-import warnings
-from datetime import datetime, timedelta, timezone
 from unittest.mock import Mock, patch
-
-import pytest
+from datetime import datetime, timedelta, timezone
 from botocore.exceptions import ClientError
+import warnings
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
@@ -25,7 +24,7 @@ class TestHistoricalDataGeneratorInit:
         with patch.dict(
             os.environ,
             {
-                "MINIO_ENDPOINT": "http://localhost:9000",
+                "AWS_ENDPOINT": "http://localhost:9000",
                 "AWS_ACCESS_KEY_ID": "test_access_key",
                 "AWS_SECRET_ACCESS_KEY": "test_secret_key",
                 "AWS_S3_BUCKET_DATA": "test-bucket",
@@ -52,8 +51,8 @@ class TestHistoricalDataGeneratorInit:
                     verify=False,
                 )
 
-    def test_init_missing_minio_endpoint(self):
-        """Test initialization fails when MINIO_ENDPOINT is missing."""
+    def test_init_missing_aws_endpoint(self):
+        """Test initialization fails when AWS_ENDPOINT is missing."""
         with patch.dict(
             os.environ,
             {
@@ -64,7 +63,7 @@ class TestHistoricalDataGeneratorInit:
             clear=True,
         ):
             with pytest.raises(
-                ValueError, match="MINIO_ENDPOINT environment variable is required"
+                ValueError, match="AWS_ENDPOINT environment variable is required"
             ):
                 HistoricalDataGenerator()
 
@@ -73,7 +72,7 @@ class TestHistoricalDataGeneratorInit:
         with patch.dict(
             os.environ,
             {
-                "MINIO_ENDPOINT": "http://localhost:9000",
+                "AWS_ENDPOINT": "http://localhost:9000",
                 "AWS_SECRET_ACCESS_KEY": "test_secret_key",
                 "AWS_S3_BUCKET_DATA": "test-bucket",
             },
@@ -89,7 +88,7 @@ class TestHistoricalDataGeneratorInit:
         with patch.dict(
             os.environ,
             {
-                "MINIO_ENDPOINT": "http://localhost:9000",
+                "AWS_ENDPOINT": "http://localhost:9000",
                 "AWS_ACCESS_KEY_ID": "test_access_key",
                 "AWS_S3_BUCKET_DATA": "test-bucket",
             },
@@ -106,7 +105,7 @@ class TestHistoricalDataGeneratorInit:
         with patch.dict(
             os.environ,
             {
-                "MINIO_ENDPOINT": "http://localhost:9000",
+                "AWS_ENDPOINT": "http://localhost:9000",
                 "AWS_ACCESS_KEY_ID": "test_access_key",
                 "AWS_SECRET_ACCESS_KEY": "test_secret_key",
             },
@@ -131,7 +130,7 @@ class TestHistoricalEventGeneration:
         with patch.dict(
             os.environ,
             {
-                "MINIO_ENDPOINT": "http://localhost:9000",
+                "AWS_ENDPOINT": "http://localhost:9000",
                 "AWS_ACCESS_KEY_ID": "test_access_key",
                 "AWS_SECRET_ACCESS_KEY": "test_secret_key",
                 "AWS_S3_BUCKET_DATA": "test-bucket",
@@ -218,7 +217,7 @@ class TestEventGrouping:
         with patch.dict(
             os.environ,
             {
-                "MINIO_ENDPOINT": "http://localhost:9000",
+                "AWS_ENDPOINT": "http://localhost:9000",
                 "AWS_ACCESS_KEY_ID": "test_access_key",
                 "AWS_SECRET_ACCESS_KEY": "test_secret_key",
                 "AWS_S3_BUCKET_DATA": "test-bucket",
@@ -306,7 +305,7 @@ class TestS3Upload:
         with patch.dict(
             os.environ,
             {
-                "MINIO_ENDPOINT": "http://localhost:9000",
+                "AWS_ENDPOINT": "http://localhost:9000",
                 "AWS_ACCESS_KEY_ID": "test_access_key",
                 "AWS_SECRET_ACCESS_KEY": "test_secret_key",
                 "AWS_S3_BUCKET_DATA": "test-bucket",
@@ -389,7 +388,7 @@ class TestAggregatedData:
         with patch.dict(
             os.environ,
             {
-                "MINIO_ENDPOINT": "http://localhost:9000",
+                "AWS_ENDPOINT": "http://localhost:9000",
                 "AWS_ACCESS_KEY_ID": "test_access_key",
                 "AWS_SECRET_ACCESS_KEY": "test_secret_key",
                 "AWS_S3_BUCKET_DATA": "test-bucket",
@@ -531,7 +530,7 @@ class TestWeekDataGeneration:
         with patch.dict(
             os.environ,
             {
-                "MINIO_ENDPOINT": "http://localhost:9000",
+                "AWS_ENDPOINT": "http://localhost:9000",
                 "AWS_ACCESS_KEY_ID": "test_access_key",
                 "AWS_SECRET_ACCESS_KEY": "test_secret_key",
                 "AWS_S3_BUCKET_DATA": "test-bucket",
@@ -734,7 +733,7 @@ class TestEdgeCases:
         with patch.dict(
             os.environ,
             {
-                "MINIO_ENDPOINT": "http://localhost:9000",
+                "AWS_ENDPOINT": "http://localhost:9000",
                 "AWS_ACCESS_KEY_ID": "test_access_key",
                 "AWS_SECRET_ACCESS_KEY": "test_secret_key",
                 "AWS_S3_BUCKET_DATA": "test-bucket",

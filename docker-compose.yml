@@ -14,6 +14,8 @@ services:
     volumes:
       - zookeeper-data:/var/lib/zookeeper/data
       - zookeeper-logs:/var/lib/zookeeper/log
+    networks:
+      - etl-network
 
   # Kafka Broker
   kafka:
@@ -35,10 +37,12 @@ services:
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_JMX_PORT: 9101
-      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_JMX_HOSTNAME: kafka
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
     volumes:
       - kafka-data:/var/lib/kafka/data
+    networks:
+      - etl-network
 
   # Kafka UI for monitoring
   kafka-ui:
@@ -52,6 +56,8 @@ services:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
       KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - etl-network
 
   # Prometheus for metrics
   prometheus:
@@ -69,6 +75,11 @@ services:
       - '--web.console.templates=/etc/prometheus/consoles'
       - '--storage.tsdb.retention.time=200h'
       - '--web.enable-lifecycle'
+    depends_on:
+      - jmx-exporter
+    restart: unless-stopped
+    networks:
+      - etl-network
 
   # Grafana for dashboards
   grafana:
@@ -82,6 +93,11 @@ services:
       - grafana-data:/var/lib/grafana
       - ./config/grafana/provisioning:/etc/grafana/provisioning
       - ./config/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - etl-network
 
   # JMX Exporter for Kafka metrics
   jmx-exporter:
@@ -94,10 +110,16 @@ services:
     #command: ["5556", "/opt/jmx_prometheus_httpserver.yml"]
     depends_on:
       - kafka
+    restart: unless-stopped
+    networks:
+      - etl-network
 
-  #MinIO
+  # MinIO Object Storage
   minio:
+    networks:
+      - etl-network
     image: minio/minio
+    container_name: minio
     command: server /var/lib/minio/data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER}
@@ -107,6 +129,11 @@ services:
       - "9001:9001"  # Web UI
     volumes:
       - minio-data:/var/lib/minio/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
 
   # IoT Event Producer
   iot-producer:
@@ -119,9 +146,13 @@ services:
     depends_on:
       - kafka
     restart: unless-stopped
+    networks:
+      - etl-network
 
   # Spark Streaming ETL
   spark-streaming:
+    networks:
+      - etl-network
     build:
       context: .
       dockerfile: docker/streaming/Dockerfile
@@ -129,19 +160,68 @@ services:
     env_file:
       - .env
     depends_on:
-      - kafka
-      - minio
+      kafka:
+        condition: service_started
+      minio:
+        condition: service_healthy
     volumes:
       - ./tmp/spark-checkpoints:/tmp/spark-checkpoints
     restart: unless-stopped
 
+  python-etl-stream:
+    networks:
+    - etl-network
+    build: ./src/kafka_consumer_etl
+    env_file:
+    - .env
+    depends_on:
+    - kafka
+    - iot-producer
+    - minio
+    environment:
+    - AGGREGATOR_BATCH_SIZE=100
+    - AGGREGATOR_FLUSH_INTERVAL=30
+    restart: unless-stopped
+
   s3-tester:
+    networks:
+      - etl-network
     build: ./tests/s3_tester
     env_file:
       - .env
     depends_on:
       minio:
-        condition: service_started
+        condition: service_healthy
+
+  spark-streaming-tester:
+    networks:
+      - etl-network
+    build: ./tests/spark_streaming_tester
+    container_name: spark-streaming-tester
+    env_file:
+      - .env
+    environment:
+      - CONSUMER_TIMEOUT=60
+      - PRODUCER_TIMEOUT=30
+      - MAX_MESSAGES=10
+      - TEST_DURATION=30
+    depends_on:
+      - kafka
+      - iot-producer
+    restart: "no"
+
+  kafka-consumer-tester:
+    networks:
+      - etl-network
+    build: ./tests/kafka_consumer_tester
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+      - iot-producer
+    environment:
+      - KAFKA_TEST_MAX_MESSAGES=10
+      - KAFKA_TEST_TIMEOUT=30
 
 volumes:
   zookeeper-data:
@@ -152,5 +232,6 @@ volumes:
   minio-data:
 
 networks:
-  default:
+  etl-network:
+    driver: bridge
     name: streaming-etl-network
