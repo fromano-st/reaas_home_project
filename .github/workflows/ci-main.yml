@@ -158,11 +158,6 @@ jobs:
           MINIO_ROOT_PASSWORD: ${{ secrets.MINIO_ROOT_PASSWORD }}
         ports:
           - 9000:9000
-        options: >-
-          --health-cmd "curl -f http://localhost:9000/minio/health/live"
-          --health-interval 30s
-          --health-timeout 20s
-          --health-retries 3
 
 
     steps:
@@ -191,7 +186,7 @@ jobs:
 
         # Wait for MinIO
         echo "Waiting for MinIO..."
-        timeout 120 bash -c 'until curl -f http://localhost:9000/minio/health/live; do sleep 2; done'
+        timeout 120 bash -c 'until curl -f http://localhost:9000/minio/ready; do sleep 2; done'
 
         # Additional wait to ensure services are fully initialized
         sleep 10
