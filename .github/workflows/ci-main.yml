@@ -174,7 +174,7 @@ jobs:
     - name: Print MinIO logs if connection failed
       # This step will only run if the previous step failed (e.g., timed out)
       if: failure()
-      run: docker logs minio || true
+      run: docker-ps logs -f minio || true
 
     - name: Create .env file for testing
       run: |
