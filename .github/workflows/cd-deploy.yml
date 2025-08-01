@@ -122,7 +122,7 @@ jobs:
         aws-region: ${{ secrets.AWS_REGION || 'us-east-1' }}
 
     - name: Download Terraform Plan
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: terraform-plan
         path: infra/terraform/
@@ -147,7 +147,7 @@ jobs:
         echo '```' >> $GITHUB_STEP_SUMMARY
 
     - name: Upload Terraform Outputs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: terraform-outputs
         path: infra/terraform/terraform-outputs.json
