@@ -27,6 +27,7 @@ services:
     ports:
       - "9092:9092"
       - "9101:9101"
+      - "7071:7071"  # For JMX exporter
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
@@ -39,8 +40,11 @@ services:
       KAFKA_JMX_PORT: 9101
       KAFKA_JMX_HOSTNAME: kafka
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+      KAFKA_OPTS: "-javaagent:/usr/app/jmx_prometheus_javaagent-0.20.0.jar=7071:/usr/app/kafka-jmx-exporter.yml"
     volumes:
       - kafka-data:/var/lib/kafka/data
+      - ./kafka-jmx-exporter.yml:/usr/app/kafka-jmx-exporter.yml
+      - ./jmx_prometheus_javaagent-0.20.0.jar:/usr/app/jmx_prometheus_javaagent-0.20.0.jar
     networks:
       - etl-network
 
@@ -59,60 +63,39 @@ services:
     networks:
       - etl-network
 
-  # Prometheus for metrics
+  # Prometheus
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.47.0
     container_name: prometheus
     ports:
       - "9090:9090"
     volumes:
-      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml
-      - prometheus-data:/prometheus
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
-      - '--storage.tsdb.path=/prometheus'
-      - '--web.console.libraries=/etc/prometheus/console_libraries'
-      - '--web.console.templates=/etc/prometheus/consoles'
-      - '--storage.tsdb.retention.time=200h'
-      - '--web.enable-lifecycle'
     depends_on:
-      - jmx-exporter
-    restart: unless-stopped
+      - kafka
     networks:
       - etl-network
 
-  # Grafana for dashboards
+# Grafana
   grafana:
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.1.5
     container_name: grafana
     ports:
       - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./config/grafana/provisioning:/etc/grafana/provisioning
-      - ./config/grafana/dashboards:/var/lib/grafana/dashboards
+      - ./grafana/provisioning:/etc/grafana/provisioning
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD}
+      - GF_USERS_ALLOW_SIGN_UP=false
     depends_on:
       - prometheus
-    restart: unless-stopped
     networks:
       - etl-network
 
-  # JMX Exporter for Kafka metrics
-  jmx-exporter:
-    image: sscaling/jmx-prometheus-exporter:latest
-    container_name: jmx-exporter
-    ports:
-      - "5556:5556"
-    volumes:
-      - ./config/jmx-exporter.yml:/opt/jmx_prometheus_httpserver.yml
-    #command: ["5556", "/opt/jmx_prometheus_httpserver.yml"]
-    depends_on:
-      - kafka
-    restart: unless-stopped
-    networks:
-      - etl-network
 
   # MinIO Object Storage
   minio:
@@ -149,6 +132,19 @@ services:
     networks:
       - etl-network
 
+  iot-producer-errors:
+    build:
+      context: .
+      dockerfile: docker/producer/Dockerfile_producer_errors
+    container_name: iot-producer-errors
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+    restart: unless-stopped
+    networks:
+      - etl-network
+
   # Spark Streaming ETL
   spark-streaming:
     networks:
@@ -171,6 +167,9 @@ services:
   python-etl-stream:
     networks:
     - etl-network
+    ports:
+      - "8000:8000"
+    container_name: python-etl-stream
     build: ./src/kafka_consumer_etl
     env_file:
     - .env
@@ -252,7 +251,6 @@ volumes:
   zookeeper-data:
   zookeeper-logs:
   kafka-data:
-  prometheus-data:
   grafana-data:
   minio-data:
   spark-logs:

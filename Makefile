@@ -36,7 +36,7 @@ destroy-infrastructure:
 # Docker services
 start-infrastructure:
 	@echo "Starting infrastructure services..."
-	docker-compose up -d zookeeper kafka minio prometheus grafana kafka-ui jmx-exporter
+	docker-compose up -d zookeeper kafka minio prometheus grafana kafka-ui
 	@echo "Waiting for services to initialize..."
 	sleep 30
 

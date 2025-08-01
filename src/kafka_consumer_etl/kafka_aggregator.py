@@ -20,12 +20,24 @@ from io import BytesIO
 
 from dotenv import load_dotenv
 from kafka import KafkaConsumer
-from kafka.errors import KafkaTimeoutError
+from kafka.errors import KafkaTimeoutError, ProcessingError
 from pydantic import BaseModel, Field, ValidationError
+from prometheus_client import start_http_server, Counter, Gauge
 import boto3
 
 # Load environment variables
 load_dotenv()
+
+# Initialize metrics
+MESSAGES_PROCESSED = Counter("etl_messages_processed", "Total messages processed")
+PROCESSING_FAILURES = Counter(
+    "etl_processing_failures", "Total processing failures", ["reason"]
+)
+CONSUMER_LAG = Gauge("etl_consumer_lag", "Current consumer lag in messages")
+PROCESSING_TIME = Gauge("etl_processing_time_ms", "Message processing time in ms")
+
+# Start metrics server (in your main application)
+start_http_server(8000)
 
 # Configure logging
 logging.basicConfig(
@@ -566,29 +578,55 @@ class KafkaAggregator:
                     # Process messages
                     for topic_partition, messages in message_batch.items():
                         for message in messages:
-                            if not self.running:
-                                break
+                            try:
+                                if not self.running:
+                                    break
+                                start_time = time.time()
 
-                            # Process message
-                            processed_event = self.validate_and_process_message(
-                                message.value
-                            )
-                            if processed_event:
-                                self.processed_events.append(processed_event)
-                                self.events_processed += 1
-
-                                # Add to window manager and get completed aggregations
-                                completed_aggregations = self.window_manager.add_event(
-                                    processed_event
+                                # Process message
+                                processed_event = self.validate_and_process_message(
+                                    message.value
                                 )
-                                if completed_aggregations:
-                                    self.process_aggregations(completed_aggregations)
-
-                                # Log progress
-                                if self.events_processed % 100 == 0:
-                                    logger.info(
-                                        f"Processed {self.events_processed} events"
+                                MESSAGES_PROCESSED.inc()
+                                PROCESSING_TIME.set(time.time() - start_time)
+                                # Get and record consumer lag
+                                position = self.consumer.position(
+                                    self.consumer.assignment()
+                                )
+                                end_offsets = self.consumer.end_offsets(
+                                    self.consumer.assignment()
+                                )
+                                lag = sum(
+                                    end - pos
+                                    for (tp, end), (_, pos) in zip(
+                                        end_offsets.items(), position.items()
                                     )
+                                )
+                                CONSUMER_LAG.set(lag)
+                                if processed_event:
+                                    self.processed_events.append(processed_event)
+                                    self.events_processed += 1
+
+                                    # Add to window manager and get completed aggregations
+                                    completed_aggregations = (
+                                        self.window_manager.add_event(processed_event)
+                                    )
+                                    if completed_aggregations:
+                                        self.process_aggregations(
+                                            completed_aggregations
+                                        )
+
+                                    # Log progress
+                                    if self.events_processed % 100 == 0:
+                                        logger.info(
+                                            f"Processed {self.events_processed} events"
+                                        )
+                            except ProcessingError as e:
+                                PROCESSING_FAILURES.labels(reason=str(e)).inc()
+                            except Exception:
+                                PROCESSING_FAILURES.labels(
+                                    reason="unexpected_error"
+                                ).inc()
 
                     # Check if we need to flush
                     if (
