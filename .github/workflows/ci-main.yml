@@ -180,7 +180,7 @@ jobs:
       run: |
         # Create minimal prometheus config
         mkdir -p config
-        cat > config/prometheus.yml << EOF
+        cat > prometheus.yml << EOF
         global:
           scrape_interval: 15s
         scrape_configs:
@@ -190,7 +190,7 @@ jobs:
         EOF
 
         # Create minimal JMX exporter config
-        cat > config/jmx-exporter.yml << EOF
+        cat > kafka-jmx-exporter.yml << EOF
         rules:
           - pattern: ".*"
         EOF
@@ -206,7 +206,7 @@ jobs:
         echo "🚀 Starting infrastructure services..."
 
         # Start core infrastructure services (equivalent to make start-infrastructure)
-        docker-compose up -d zookeeper kafka minio prometheus grafana kafka-ui jmx-exporter
+        docker-compose up -d zookeeper kafka minio prometheus grafana kafka-ui
 
         echo "⏳ Waiting for services to initialize..."
         sleep 30
