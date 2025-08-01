@@ -296,22 +296,7 @@
         "alignLevel": null
       }
     },
-    {
-      "gridPos": {"h": 7, "w": 8, "x": 0, "y": 14},
-      "title": "Consumer Lag by Partition",
-      "type": "table",
-      "targets": [{
-        "expr": "kafka_consumer_topic_partition_records_lag",
-        "format": "table",
-        "instant": true,
-        "refId": "A"
-      }],
-      "columns": [
-        {"text": "Topic", "type": "string", "value": "topic"},
-        {"text": "Partition", "type": "string", "value": "partition"},
-        {"text": "Lag", "type": "number", "value": "value"}
-      ]
-    },
+
     {
       "aliasColors": {},
       "bars": false,
@@ -858,7 +843,7 @@
         "type": "query"
       },
       {
-        "gridPos": {"h": 7, "w": 8, "x": 24, "y": 0},
+        "gridPos": {"h": 7, "w": 8, "x": 0, "y": 14},
         "title": "Processing Failures",
         "type": "piechart",
         "targets": [{
