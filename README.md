@@ -1,6 +1,7 @@
 # Real-Time Streaming ETL Pipeline
 
 This repository contains the solution for the Real-Time Streaming ETL take-home assignment, focusing on designing a production-grade streaming data pipeline using open-source technologies, integrating cloud services, and implementing live observability.
+the original assignment is saved under take_home_assignment.md
 
 ## Implemented Components and Deviations
 
@@ -30,7 +31,7 @@ Processed data is successfully written to a storage system in Parquet format.
 
 A monitoring setup, including Grafana and Prometheus, has been deployed to provide real-time dashboards with metrics on ingestion, processing, and data throughput.
 
-**Note on Implementation**: While the services appear to be running correctly, some configuration issues are preventing data from being displayed on the Grafana dashboard. Further investigation is needed to resolve this.
+**Note on Implementation**: While the services appear to be running correctly, some configuration issues are preventing some data from being displayed on the Grafana dashboard. Further investigation is needed to resolve this.
 
 ### 5. Repository and Automation
 **Status**: Completed
